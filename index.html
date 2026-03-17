@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Palipalan - Campo do Cerrado</title>
+  <style>
+    /* ── Windows XP system fonts & reset ── */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Tahoma', 'Segoe UI', sans-serif;
+      overflow: hidden;
+      height: 100vh; width: 100vw;
+      user-select: none;
+      cursor: crosshair;
+    }
+
+    /* ── XP-style sky gradient (cerrado golden hour) ── */
+    #sky {
+      position: absolute; inset: 0;
+      background: linear-gradient(
+        to bottom,
+        #1a3a6b 0%,
+        #2a5aaa 14%,
+        #4a7fcc 28%,
+        #6aa3dd 42%,
+        #d98830 62%,
+        #e8b040 75%,
+        #f0c84a 86%,
+        #edd06a 100%
+      );
+    }
+
+    /* ── XP rolling hills ── */
+    #hills {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 62%;
+      pointer-events: none;
+    }
+
+    /* ── Canvas for palipalans ── */
+    #field {
+      position: absolute; inset: 0;
+      pointer-events: none;
+    }
+
+    /* ── Click target overlay ── */
+    #clickzone {
+      position: absolute; inset: 0;
+      z-index: 10;
+    }
+
+    /* ── XP Taskbar ── */
+    #taskbar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 30px;
+      background: linear-gradient(to bottom, #245edb 0%, #3d7eed 4%, #245edb 100%);
+      border-top: 1px solid #1a4aaf;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+      gap: 4px;
+    }
+
+    #start-btn {
+      background: linear-gradient(to bottom, #3fad3f 0%, #2d8f2d 100%);
+      border: 1px solid #1c6b1c;
+      border-radius: 2px 10px 10px 2px;
+      color: #fff;
+      font-weight: bold;
+      font-size: 12px;
+      padding: 2px 10px 2px 6px;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+      display: flex; align-items: center; gap: 4px;
+    }
+
+    #chord-display {
+      flex: 1;
+      color: #fff;
+      font-size: 11px;
+      text-align: center;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+      letter-spacing: 1px;
+    }
+
+    #clock {
+      color: #fff; font-size: 11px;
+      padding: 2px 6px;
+      background: rgba(0,0,50,0.3);
+      border-radius: 2px;
+    }
+
+    /* ── XP-style panel window ── */
+    #panel {
+      position: fixed;
+      bottom: 35px; right: 10px;
+      width: 280px;
+      background: #ece9d8;
+      border: 2px solid #0054e3;
+      border-radius: 4px 4px 0 0;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+      z-index: 50;
+      display: none;
+      font-size: 11px;
+    }
+
+    #panel.open { display: block; }
+
+    #panel-title {
+      background: linear-gradient(to bottom, #0a5ecf 0%, #245edb 50%, #1249b3 100%);
+      color: #fff;
+      font-weight: bold;
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 2px 2px 0 0;
+      display: flex; justify-content: space-between; align-items: center;
+      cursor: move;
+    }
+
+    #panel-close {
+      background: linear-gradient(to bottom, #e06060 0%, #b02020 100%);
+      border: 1px solid #800000;
+      border-radius: 2px;
+      color: #fff;
+      width: 16px; height: 14px;
+      font-size: 10px; font-weight: bold;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+
+    #panel-body {
+      padding: 8px;
+      display: flex; flex-direction: column; gap: 6px;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+
+    .param-group {
+      background: #fff;
+      border: 1px solid #a0a0a0;
+      border-radius: 2px;
+      padding: 6px;
+    }
+
+    .param-group h3 {
+      font-size: 11px;
+      font-weight: bold;
+      color: #0054e3;
+      margin-bottom: 4px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 2px;
+    }
+
+    .param-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      gap: 6px;
+    }
+
+    .param-row label {
+      flex: 1; font-size: 10px; color: #333;
+    }
+
+    .param-row input[type=range] {
+      flex: 2;
+      height: 14px;
+      accent-color: #0054e3;
+    }
+
+    .param-row .val {
+      width: 32px;
+      text-align: right;
+      font-size: 10px;
+      color: #555;
+    }
+
+    .param-row select {
+      flex: 2;
+      font-size: 10px;
+      border: 1px solid #a0a0a0;
+      background: #fff;
+      padding: 1px 2px;
+    }
+
+    .param-row input[type=checkbox] {
+      accent-color: #0054e3;
+    }
+
+    #btn-clear {
+      background: linear-gradient(to bottom, #f5f5f5, #ddd);
+      border: 1px solid #a0a0a0;
+      border-radius: 2px;
+      font-size: 10px;
+      padding: 3px 8px;
+      cursor: pointer;
+      width: 100%;
+    }
+    #btn-clear:hover { background: linear-gradient(to bottom, #fff, #e8e8e8); }
+
+    /* ── Palipalan SVG styles ── */
+    .palipalan {
+      position: absolute;
+      pointer-events: none;
+      transform-origin: bottom center;
+    }
+
+    .palipalan.bounce {
+      animation: sway-in 0.6s ease-out;
+    }
+
+    @keyframes sway-in {
+      0%   { transform: scaleY(0) rotate(-10deg); opacity: 0; }
+      60%  { transform: scaleY(1.1) rotate(4deg); opacity: 1; }
+      80%  { transform: scaleY(0.95) rotate(-2deg); }
+      100% { transform: scaleY(1) rotate(0deg); opacity: 1; }
+    }
+
+    /* ── Note flash ── */
+    .note-flash {
+      position: absolute;
+      pointer-events: none;
+      color: #fff;
+      font-size: 18px;
+      font-weight: bold;
+      text-shadow: 0 0 8px #ffdd44, 0 0 16px #ff8800;
+      animation: note-up 1.2s ease-out forwards;
+      z-index: 20;
+    }
+
+    @keyframes note-up {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-60px) scale(1.4); }
+    }
+
+    /* ── Ripple on click ── */
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,180,0.7);
+      pointer-events: none;
+      animation: ripple-out 0.6s ease-out forwards;
+      z-index: 15;
+    }
+
+    @keyframes ripple-out {
+      0%   { width: 0; height: 0; opacity: 0.8; margin: 0; }
+      100% { width: 80px; height: 80px; opacity: 0; margin: -40px; }
+    }
+
+    /* ── Sway animation for planted palipalans ── */
+    .palipalan {
+      filter: drop-shadow(0 0 6px rgba(220,160,20,0.55))
+              drop-shadow(0 0 2px rgba(255,220,80,0.35));
+    }
+
+    .sway {
+      animation: sway 2s ease-in-out infinite;
+    }
+
+    @keyframes sway {
+      0%, 100% { transform: rotate(0deg); }
+      25%       { transform: rotate(2deg); }
+      75%       { transform: rotate(-2deg); }
+    }
+
+    .sway-triggered {
+      animation: sway-big 0.8s ease-in-out !important;
+    }
+
+    @keyframes sway-big {
+      0%   { transform: rotate(0deg); }
+      20%  { transform: rotate(-8deg); }
+      50%  { transform: rotate(6deg); }
+      75%  { transform: rotate(-3deg); }
+      100% { transform: rotate(0deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="sky"></div>
+
+  <svg id="hills" viewBox="0 0 1440 400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Distant horizon silhouette – dark cerrado chapada -->
+    <path d="M0,230 C200,210 380,195 600,215 C820,235 1000,200 1200,220 C1350,232 1420,225 1440,228 L1440,400 L0,400 Z"
+          fill="#1a3d0a" opacity="0.85"/>
+    <!-- Mid field – golden-green lit by sunset -->
+    <path d="M0,290 C150,260 320,250 520,270 C720,290 900,255 1100,275 C1260,290 1390,278 1440,282 L1440,400 L0,400 Z"
+          fill="#4a7a10"/>
+    <!-- Foreground field – darker, richer -->
+    <path d="M0,340 C180,310 380,300 600,325 C820,350 1020,308 1240,335 C1360,348 1430,340 1440,342 L1440,400 L0,400 Z"
+          fill="#2d5a08"/>
+    <!-- Ground plane -->
+    <rect x="0" y="370" width="1440" height="30" fill="#1e3d06"/>
+
+    <!-- Scattered background palipalan silhouettes (horizon) -->
+    <g fill="none" stroke="#c8941a" stroke-width="0.7" opacity="0.45">
+      <!-- tiny distant starburst shapes -->
+      <circle cx="120"  cy="225" r="5"/><line x1="120" y1="225" x2="120" y2="240"/>
+      <circle cx="280"  cy="218" r="4"/><line x1="280" y1="218" x2="280" y2="232"/>
+      <circle cx="450"  cy="222" r="6"/><line x1="450" y1="222" x2="450" y2="240"/>
+      <circle cx="640"  cy="216" r="4"/><line x1="640" y1="216" x2="640" y2="229"/>
+      <circle cx="800"  cy="212" r="5"/><line x1="800" y1="212" x2="800" y2="228"/>
+      <circle cx="960"  cy="220" r="4"/><line x1="960" y1="220" x2="960" y2="233"/>
+      <circle cx="1120" cy="215" r="6"/><line x1="1120" y1="215" x2="1120" y2="232"/>
+      <circle cx="1320" cy="222" r="4"/><line x1="1320" y1="222" x2="1320" y2="236"/>
+    </g>
+
+    <!-- Mid-field silhouette palipalan hints -->
+    <g fill="none" stroke="#b87e14" stroke-width="1" opacity="0.35">
+      <circle cx="80"   cy="275" r="9"/> <line x1="80"   y1="275" x2="80"   y2="298"/>
+      <circle cx="360"  cy="262" r="8"/> <line x1="360"  y1="262" x2="360"  y2="284"/>
+      <circle cx="580"  cy="272" r="10"/><line x1="580"  y1="272" x2="580"  y2="296"/>
+      <circle cx="850"  cy="258" r="8"/> <line x1="850"  y1="258" x2="850"  y2="280"/>
+      <circle cx="1050" cy="268" r="9"/> <line x1="1050" y1="268" x2="1050" y2="290"/>
+      <circle cx="1280" cy="264" r="8"/> <line x1="1280" y1="264" x2="1280" y2="286"/>
+    </g>
+  </svg>
+
+  <canvas id="field"></canvas>
+  <div id="clickzone"></div>
+
+  <!-- Taskbar -->
+  <div id="taskbar">
+    <button id="start-btn" onclick="togglePanel()">
+      <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#7eca6c"/><text x="3.5" y="10.5" font-size="8" fill="#fff">🌿</text></svg>
+      Parâmetros
+    </button>
+    <span id="chord-display">♩ clique no campo para plantar palipalans ♩</span>
+    <span id="clock">00:00</span>
+  </div>
+
+  <!-- Parameters Panel -->
+  <div id="panel">
+    <div id="panel-title">
+      <span>🌿 Parâmetros do Omnichord Cerrado</span>
+      <button id="panel-close" onclick="togglePanel()">✕</button>
+    </div>
+    <div id="panel-body">
+
+      <div class="param-group">
+        <h3>Harmonia</h3>
+        <div class="param-row">
+          <label>Escala</label>
+          <select id="scale">
+            <option value="major">Maior</option>
+            <option value="dorian" selected>Dórico</option>
+            <option value="mixolydian">Mixolídio</option>
+            <option value="lydian">Lídio</option>
+            <option value="pentatonic">Pentatônica</option>
+            <option value="whole">Tons inteiros</option>
+          </select>
+        </div>
+        <div class="param-row">
+          <label>Tom raiz</label>
+          <select id="root">
+            <option value="0">C</option>
+            <option value="2">D</option>
+            <option value="4">E</option>
+            <option value="5">F</option>
+            <option value="7" selected>G</option>
+            <option value="9">A</option>
+            <option value="11">B</option>
+          </select>
+        </div>
+        <div class="param-row">
+          <label>Extensão máx.</label>
+          <select id="chordExt">
+            <option value="triad">Tríade</option>
+            <option value="seventh" selected>7ª</option>
+            <option value="ninth">9ª</option>
+            <option value="eleventh">11ª</option>
+            <option value="thirteenth">13ª</option>
+          </select>
+        </div>
+        <div class="param-row">
+          <label>Notas p/ acorde</label>
+          <input type="range" id="chordDensity" min="1" max="8" value="4" step="1"
+                 oninput="syncVal(this,'chordDensityVal')"/>
+          <span class="val" id="chordDensityVal">4</span>
+        </div>
+        <div class="param-row">
+          <label>Arpejo</label>
+          <input type="checkbox" id="arpeggio" checked/>
+        </div>
+        <div class="param-row">
+          <label>Vel. arpejo (ms)</label>
+          <input type="range" id="arpSpeed" min="20" max="400" value="90" step="10"
+                 oninput="syncVal(this,'arpSpeedVal')"/>
+          <span class="val" id="arpSpeedVal">90</span>
+        </div>
+      </div>
+
+      <div class="param-group">
+        <h3>Timbre (Omnichord)</h3>
+        <div class="param-row">
+          <label>Forma de onda</label>
+          <select id="waveform">
+            <option value="sine" selected>Sine</option>
+            <option value="triangle">Triangle</option>
+            <option value="sawtooth">Sawtooth</option>
+            <option value="square">Square</option>
+          </select>
+        </div>
+        <div class="param-row">
+          <label>Ataque (ms)</label>
+          <input type="range" id="attack" min="0" max="500" value="8" step="1"
+                 oninput="syncVal(this,'attackVal')"/>
+          <span class="val" id="attackVal">8</span>
+        </div>
+        <div class="param-row">
+          <label>Decay (ms)</label>
+          <input type="range" id="decay" min="50" max="2000" value="400" step="10"
+                 oninput="syncVal(this,'decayVal')"/>
+          <span class="val" id="decayVal">400</span>
+        </div>
+        <div class="param-row">
+          <label>Sustain</label>
+          <input type="range" id="sustain" min="0" max="1" value="0.5" step="0.01"
+                 oninput="syncVal(this,'sustainVal')"/>
+          <span class="val" id="sustainVal">0.5</span>
+        </div>
+        <div class="param-row">
+          <label>Release (ms)</label>
+          <input type="range" id="release" min="100" max="5000" value="1800" step="50"
+                 oninput="syncVal(this,'releaseVal')"/>
+          <span class="val" id="releaseVal">1800</span>
+        </div>
+        <div class="param-row">
+          <label>Reverb</label>
+          <input type="range" id="reverb" min="0" max="1" value="0.45" step="0.01"
+                 oninput="syncVal(this,'reverbVal')"/>
+          <span class="val" id="reverbVal">0.45</span>
+        </div>
+        <div class="param-row">
+          <label>Chorus/Detune</label>
+          <input type="range" id="detune" min="0" max="30" value="6" step="1"
+                 oninput="syncVal(this,'detuneVal')"/>
+          <span class="val" id="detuneVal">6</span>
+        </div>
+      </div>
+
+      <div class="param-group">
+        <h3>Ritmo & Campo</h3>
+        <div class="param-row">
+          <label>Oitava base</label>
+          <input type="range" id="baseOctave" min="2" max="6" value="4" step="1"
+                 oninput="syncVal(this,'baseOctaveVal')"/>
+          <span class="val" id="baseOctaveVal">4</span>
+        </div>
+        <div class="param-row">
+          <label>Oitavas span</label>
+          <input type="range" id="octaveSpan" min="1" max="4" value="2" step="1"
+                 oninput="syncVal(this,'octaveSpanVal')"/>
+          <span class="val" id="octaveSpanVal">2</span>
+        </div>
+        <div class="param-row">
+          <label>Memória (plantas)</label>
+          <input type="range" id="maxPlants" min="4" max="64" value="24" step="1"
+                 oninput="syncVal(this,'maxPlantsVal')"/>
+          <span class="val" id="maxPlantsVal">24</span>
+        </div>
+        <div class="param-row">
+          <label>Vibração Wind</label>
+          <input type="range" id="windSpeed" min="0.1" max="4" value="1.2" step="0.1"
+                 oninput="syncVal(this,'windSpeedVal')"/>
+          <span class="val" id="windSpeedVal">1.2</span>
+        </div>
+      </div>
+
+      <button id="btn-clear" onclick="clearField()">🌾 Limpar campo</button>
+    </div>
+  </div>
+
+  <script>
+  // ══════════════════════════════════════════════════════════
+  //  AUDIO ENGINE
+  // ══════════════════════════════════════════════════════════
+  let ctx = null;
+  let reverbNode = null;
+  let masterGain = null;
+  let reverbGain = null;
+  let dryGain   = null;
+
+  function ensureCtx() {
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = ctx.createGain();
+    masterGain.gain.value = 0.7;
+    masterGain.connect(ctx.destination);
+
+    // Simple convolver reverb via impulse
+    reverbNode = ctx.createConvolver();
+    reverbNode.buffer = makeImpulse(ctx, 2.4, 3.2, false);
+
+    dryGain   = ctx.createGain();
+    reverbGain = ctx.createGain();
+    dryGain.connect(masterGain);
+    reverbGain.connect(masterGain);
+    reverbNode.connect(reverbGain);
+
+    updateReverb();
+  }
+
+  function updateReverb() {
+    if (!dryGain) return;
+    const rv = parseFloat(document.getElementById('reverb').value);
+    reverbGain.gain.value = rv;
+    dryGain.gain.value = 1 - rv * 0.6;
+  }
+
+  function makeImpulse(ctx, duration, decay, reverse) {
+    const sampleRate = ctx.sampleRate;
+    const length     = sampleRate * duration;
+    const impulse    = ctx.createBuffer(2, length, sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const ch = impulse.getChannelData(c);
+      for (let i = 0; i < length; i++) {
+        let n = reverse ? length - i : i;
+        ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - n / length, decay);
+      }
+    }
+    return impulse;
+  }
+
+  function playTone(freq, startTime, duration) {
+    const wf      = document.getElementById('waveform').value;
+    const att     = parseFloat(document.getElementById('attack').value)  / 1000;
+    const dec     = parseFloat(document.getElementById('decay').value)   / 1000;
+    const sus     = parseFloat(document.getElementById('sustain').value);
+    const rel     = parseFloat(document.getElementById('release').value) / 1000;
+    const detCents= parseFloat(document.getElementById('detune').value);
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, startTime);
+    g.gain.linearRampToValueAtTime(0.3, startTime + att);
+    g.gain.linearRampToValueAtTime(0.3 * sus, startTime + att + dec);
+    g.gain.setValueAtTime(0.3 * sus, startTime + duration);
+    g.gain.linearRampToValueAtTime(0, startTime + duration + rel);
+
+    g.connect(dryGain);
+    g.connect(reverbNode);
+
+    // main osc
+    const osc = ctx.createOscillator();
+    osc.type = wf;
+    osc.frequency.value = freq;
+    osc.connect(g);
+    osc.start(startTime);
+    osc.stop(startTime + duration + rel + 0.1);
+
+    // Chorus: slight detune copy
+    if (detCents > 0) {
+      const osc2 = ctx.createOscillator();
+      const g2   = ctx.createGain();
+      g2.gain.setValueAtTime(0, startTime);
+      g2.gain.linearRampToValueAtTime(0.15, startTime + att);
+      g2.gain.linearRampToValueAtTime(0.15 * sus, startTime + att + dec);
+      g2.gain.setValueAtTime(0.15 * sus, startTime + duration);
+      g2.gain.linearRampToValueAtTime(0, startTime + duration + rel);
+      g2.connect(dryGain);
+      osc2.type = wf;
+      osc2.frequency.value = freq;
+      osc2.detune.value    = detCents;
+      osc2.connect(g2);
+      osc2.start(startTime);
+      osc2.stop(startTime + duration + rel + 0.1);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  SCALE & CHORD LOGIC
+  // ══════════════════════════════════════════════════════════
+  const SCALES = {
+    major:       [0,2,4,5,7,9,11],
+    dorian:      [0,2,3,5,7,9,10],
+    mixolydian:  [0,2,4,5,7,9,10],
+    lydian:      [0,2,4,6,7,9,11],
+    pentatonic:  [0,2,4,7,9],
+    whole:       [0,2,4,6,8,10],
+  };
+
+  const CHORD_INTERVALS = {
+    triad:       [0,2,4],
+    seventh:     [0,2,4,6],
+    ninth:       [0,2,4,6,8],
+    eleventh:    [0,2,4,6,8,10],
+    thirteenth:  [0,2,4,6,8,10,12],
+  };
+
+  const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+  function semitoneToFreq(semitone) {
+    // A4 = 440 Hz = MIDI 69
+    return 440 * Math.pow(2, (semitone - 69) / 12);
+  }
+
+  function getScaleDegree(index) {
+    const scale = SCALES[document.getElementById('scale').value];
+    const root  = parseInt(document.getElementById('root').value);
+    const base  = parseInt(document.getElementById('baseOctave').value);
+    const span  = parseInt(document.getElementById('octaveSpan').value);
+
+    // wrap index into scale
+    const scaleDeg = index % scale.length;
+    const octaveOff = Math.floor(index / scale.length);
+    const midiBase  = (base + Math.min(octaveOff, span - 1)) * 12 + root + scale[scaleDeg];
+    return midiBase;
+  }
+
+  let plantNotes = []; // each element: { midi, x, y, el }
+
+  function buildChordFreqs(anchorMidi) {
+    const scale   = SCALES[document.getElementById('scale').value];
+    const extType = document.getElementById('chordExt').value;
+    const density = parseInt(document.getElementById('chordDensity').value);
+    const root    = parseInt(document.getElementById('root').value);
+    const base    = parseInt(document.getElementById('baseOctave').value);
+
+    const intervals = CHORD_INTERVALS[extType];
+    const count     = Math.min(density, intervals.length);
+
+    // Find closest scale degree to anchorMidi
+    const anchorOct  = Math.floor((anchorMidi - root) / 12);
+    const anchorClass = (anchorMidi - root) % 12;
+
+    // Find nearest scale degree index
+    let nearestDeg = 0;
+    let minDist = 999;
+    for (let i = 0; i < scale.length; i++) {
+      const d = Math.abs(scale[i] - anchorClass);
+      if (d < minDist) { minDist = d; nearestDeg = i; }
+    }
+
+    const freqs = [];
+    const labels = [];
+    for (let i = 0; i < count; i++) {
+      const intIdx = intervals[i];
+      const degIdx = (nearestDeg + intIdx) % scale.length;
+      const octBump= Math.floor((nearestDeg + intIdx) / scale.length);
+      const semis  = (base + anchorOct + octBump) * 12 + root + scale[degIdx];
+      freqs.push(semitoneToFreq(semis));
+      labels.push(NOTE_NAMES[(root + scale[degIdx]) % 12]);
+    }
+    return { freqs, labels };
+  }
+
+  function chordName(labels) {
+    if (!labels.length) return '';
+    const root = labels[0];
+    const intervals = labels.slice(1).join(' ');
+    return `${root} → ${intervals}`;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  PLANTS
+  // ══════════════════════════════════════════════════════════
+  let plants = [];
+
+  function makePalipalanSVG(size, hue) {
+    // Palipalan = Paepalanthus/Syngonanthus: thin stem + radial starburst head
+    // Reference: glowing golden firework-like flower with many rays, each tipped
+    // with a tiny round bud. Scale: viewBox 0 0 80 200, head at y=50, base at y=190
+
+    const h   = Math.round(hue);           // base hue (golden-yellow range)
+    const rays = 28 + Math.floor(Math.random() * 18);  // 28-45 rays
+    const R    = 28 + Math.random() * 10;  // radius of ray spread
+    const cx   = 40, cy = 52;             // center of starburst head
+
+    // Slight random tilt for naturalness
+    const tilt = (Math.random() - 0.5) * 14;
+
+    let s = `<svg xmlns="http://www.w3.org/2000/svg"
+      width="${size}" height="${size * 2.5}"
+      viewBox="0 0 80 200"
+      style="overflow:visible"
+      transform="rotate(${tilt})">`;
+
+    // ── Thin green stem ──
+    const stemWobble = (Math.random() - 0.5) * 6;
+    s += `<line x1="${cx}" y1="${cy}" x2="${cx + stemWobble}" y2="190"
+      stroke="hsl(110,45%,28%)" stroke-width="1.8" stroke-linecap="round"/>`;
+
+    // ── Subtle glow halo behind head ──
+    s += `<circle cx="${cx}" cy="${cy}" r="${R * 1.05}"
+      fill="hsl(${h},90%,65%)" opacity="0.12"/>`;
+    s += `<circle cx="${cx}" cy="${cy}" r="${R * 0.7}"
+      fill="hsl(${h},85%,70%)" opacity="0.18"/>`;
+
+    // ── Rays ──
+    for (let i = 0; i < rays; i++) {
+      const angle  = (i / rays) * Math.PI * 2;
+      const jitter = (Math.random() - 0.5) * 0.12;  // slight angular jitter
+      const a      = angle + jitter;
+      const rLen   = R * (0.72 + Math.random() * 0.28);
+
+      const x1 = cx + Math.cos(a) * 4;   // start near center
+      const y1 = cy + Math.sin(a) * 4;
+      const x2 = cx + Math.cos(a) * rLen;
+      const y2 = cy + Math.sin(a) * rLen;
+
+      // slight curve via quadratic bezier
+      const midX = cx + Math.cos(a) * rLen * 0.55 + (Math.random()-0.5)*3;
+      const midY = cy + Math.sin(a) * rLen * 0.55 + (Math.random()-0.5)*3;
+
+      // Ray color: golden-amber, lighter at tips
+      const rayLightness = 42 + Math.random() * 20;
+      s += `<path d="M${x1},${y1} Q${midX},${midY} ${x2},${y2}"
+        fill="none"
+        stroke="hsl(${h + (Math.random()-0.5)*15}, 85%, ${rayLightness}%)"
+        stroke-width="${0.7 + Math.random() * 0.6}"
+        stroke-linecap="round" opacity="${0.8 + Math.random()*0.2}"/>`;
+
+      // Tiny round bud tip — like the white/cream balls in the photo
+      const budR   = 1.4 + Math.random() * 1.2;
+      const budHue = Math.random() > 0.5 ? h : h + 30;
+      const budL   = 78 + Math.random() * 18;
+      s += `<circle cx="${x2}" cy="${y2}" r="${budR}"
+        fill="hsl(${budHue},60%,${budL}%)" opacity="0.95"/>`;
+    }
+
+    // ── Dense inner cluster of shorter rays (inner whorl) ──
+    const innerRays = 14 + Math.floor(Math.random() * 10);
+    for (let i = 0; i < innerRays; i++) {
+      const angle = (i / innerRays) * Math.PI * 2 + Math.PI / innerRays;
+      const rLen  = R * (0.3 + Math.random() * 0.28);
+      const x2    = cx + Math.cos(angle) * rLen;
+      const y2    = cy + Math.sin(angle) * rLen;
+      s += `<line x1="${cx}" y1="${cy}" x2="${x2}" y2="${y2}"
+        stroke="hsl(${h+15},80%,62%)" stroke-width="${0.5 + Math.random()*0.4}"
+        stroke-linecap="round" opacity="0.7"/>`;
+      // small inner bud
+      s += `<circle cx="${x2}" cy="${y2}" r="${0.9 + Math.random()*0.7}"
+        fill="hsl(${h+25},55%,88%)" opacity="0.85"/>`;
+    }
+
+    // ── Bright glowing center disc ──
+    s += `<circle cx="${cx}" cy="${cy}" r="4.5"
+      fill="hsl(${h+5},90%,75%)" opacity="0.9"/>`;
+    s += `<circle cx="${cx}" cy="${cy}" r="2.5"
+      fill="hsl(${h+10},95%,92%)" opacity="1"/>`;
+
+    // ── Tiny leaf sheaths on stem ──
+    for (let i = 0; i < 2; i++) {
+      const ly = cy + 30 + i * 40 + Math.random() * 20;
+      const lx = cx + (Math.random()-0.5)*3;
+      const la = -25 + Math.random()*50;
+      s += `<ellipse cx="${lx}" cy="${ly}" rx="1.5" ry="7"
+        fill="hsl(110,45%,32%)" transform="rotate(${la},${lx},${ly})" opacity="0.7"/>`;
+    }
+
+    s += `</svg>`;
+    return s;
+  }
+
+  function addPlant(x, y, midi) {
+    const max = parseInt(document.getElementById('maxPlants').value);
+    // Remove oldest if over limit
+    if (plants.length >= max) {
+      const old = plants.shift();
+      if (old.el && old.el.parentNode) old.el.parentNode.removeChild(old.el);
+    }
+
+    // Size varies by vertical position — plants near bottom (foreground) are larger
+    const yFrac = y / window.innerHeight;  // 0=top, 1=bottom
+    const size  = 18 + yFrac * 44 + Math.random() * 22;
+    // Golden-amber hue range matching the reference photo
+    const hue  = 38 + Math.random() * 22; // warm golden 38–60°
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'palipalan sway';
+    wrapper.style.left   = `${x - size/2}px`;
+    // Anchor the base of the stem at click point
+    wrapper.style.top    = `${y - size * 2.5 * 0.28}px`; // head is ~28% from top of SVG
+    wrapper.style.width  = `${size}px`;
+    wrapper.style.height = `${size * 2.5}px`;
+    wrapper.style.transformOrigin = `50% 95%`;
+    wrapper.style.animationDuration = `${1.5 + Math.random()*2}s`;
+    wrapper.style.animationDelay    = `${Math.random()*0.5}s`;
+    wrapper.innerHTML = makePalipalanSVG(size, hue);
+
+    // apply wind speed style
+    updateWindSway(wrapper);
+
+    document.body.appendChild(wrapper);
+    // trigger grow animation
+    requestAnimationFrame(() => wrapper.classList.add('bounce'));
+
+    plants.push({ el: wrapper, midi, x, y });
+
+    // Triggered sway after note
+    setTimeout(() => {
+      wrapper.classList.add('sway-triggered');
+      setTimeout(() => wrapper.classList.remove('sway-triggered'), 900);
+    }, 100);
+
+    return wrapper;
+  }
+
+  function updateWindSway(el) {
+    if (!el) return;
+    const ws = parseFloat(document.getElementById('windSpeed').value);
+    el.style.animationDuration = `${(1.5 + Math.random()*2) / ws}s`;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  VISUAL FEEDBACK
+  // ══════════════════════════════════════════════════════════
+  function spawnNoteLabel(x, y, label) {
+    const el = document.createElement('div');
+    el.className = 'note-flash';
+    el.textContent = label;
+    el.style.left = `${x - 10}px`;
+    el.style.top  = `${y - 30}px`;
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  }
+
+  function spawnRipple(x, y) {
+    const el = document.createElement('div');
+    el.className = 'ripple';
+    el.style.left = `${x}px`;
+    el.style.top  = `${y}px`;
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  }
+
+  function updateChordDisplay(labels) {
+    const name = labels.length ? `♩ ${chordName(labels)} ♩` : '♩ clique no campo para plantar palipalans ♩';
+    document.getElementById('chord-display').textContent = name;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  MAIN CLICK HANDLER
+  // ══════════════════════════════════════════════════════════
+  let clickCount = 0;
+
+  document.getElementById('clickzone').addEventListener('click', async (e) => {
+    ensureCtx();
+    if (ctx.state === 'suspended') await ctx.resume();
+    updateReverb();
+
+    const x = e.clientX;
+    const y = e.clientY;
+    clickCount++;
+
+    // Assign midi note based on click count cycling through scale
+    const scaleDegIdx = (clickCount - 1) % 100;
+    const midi = getScaleDegree(scaleDegIdx);
+
+    // Build chord around this note
+    const { freqs, labels } = buildChordFreqs(midi);
+
+    // Plant palipalan
+    addPlant(x, y, midi);
+    spawnRipple(x, y);
+    spawnNoteLabel(x, y - 20, labels[0] || NOTE_NAMES[midi % 12]);
+
+    // Trigger sway on nearby existing plants
+    for (const p of plants) {
+      const dist = Math.hypot(p.x - x, p.y - y);
+      if (dist < 150 && p.el) {
+        setTimeout(() => {
+          p.el.classList.add('sway-triggered');
+          setTimeout(() => p.el && p.el.classList.remove('sway-triggered'), 900);
+        }, Math.random() * 200);
+      }
+    }
+
+    // Play chord (arpeggiated or simultaneous)
+    const now     = ctx.currentTime;
+    const doArp   = document.getElementById('arpeggio').checked;
+    const arpMs   = parseFloat(document.getElementById('arpSpeed').value) / 1000;
+    const dur     = parseFloat(document.getElementById('decay').value) / 1000 * 1.5;
+
+    freqs.forEach((f, i) => {
+      const t = now + (doArp ? i * arpMs : 0);
+      playTone(f, t, dur);
+    });
+
+    updateChordDisplay(labels);
+  });
+
+  // ══════════════════════════════════════════════════════════
+  //  UI HELPERS
+  // ══════════════════════════════════════════════════════════
+  function syncVal(input, spanId) {
+    document.getElementById(spanId).textContent = input.value;
+    if (spanId === 'reverbVal') updateReverb();
+    if (spanId === 'windSpeedVal') {
+      for (const p of plants) updateWindSway(p.el);
+    }
+  }
+
+  function togglePanel() {
+    document.getElementById('panel').classList.toggle('open');
+  }
+
+  function clearField() {
+    for (const p of plants) {
+      if (p.el && p.el.parentNode) p.el.parentNode.removeChild(p.el);
+    }
+    plants = [];
+    clickCount = 0;
+    updateChordDisplay([]);
+  }
+
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+  updateClock();
+  setInterval(updateClock, 10000);
+
+  // Draggable panel
+  (function() {
+    const panel = document.getElementById('panel');
+    const title = document.getElementById('panel-title');
+    let dragging = false, ox = 0, oy = 0;
+    title.addEventListener('mousedown', e => {
+      dragging = true;
+      ox = e.clientX - panel.offsetLeft;
+      oy = e.clientY - panel.offsetTop;
+    });
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      panel.style.right  = 'auto';
+      panel.style.bottom = 'auto';
+      panel.style.left   = `${e.clientX - ox}px`;
+      panel.style.top    = `${e.clientY - oy}px`;
+    });
+    document.addEventListener('mouseup', () => dragging = false);
+  })();
+  </script>
+</body>
+</html>
