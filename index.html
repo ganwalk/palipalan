@@ -755,12 +755,12 @@ const HYLICS_PALETTE = [
 ];
 
 // ══════════════════════════════════════════════════════════
-//  PLANT SVG (HYLICS STYLE)
+//  PLANT SVG (VOLUMETRIC STYLE)
 // ══════════════════════════════════════════════════════════
 let rng; // seeded per plant
+let paliCount = 0;
 
 function blobPath(cx, cy, r, n, rough) {
-  // Generate smooth lumpy blob
   const radii = Array.from({length:n}, () => r * (1 + (Math.random()-0.5)*rough));
   const pts   = radii.map((ri, i) => {
     const a = (i/n)*Math.PI*2 - Math.PI/2;
@@ -776,99 +776,156 @@ function blobPath(cx, cy, r, n, rough) {
 }
 
 function makePalipalanSVG(size, colorIdx) {
-  const col   = HYLICS_PALETTE[colorIdx % HYLICS_PALETTE.length];
-  const rays  = 18 + Math.floor(Math.random() * 14);   // 18-31 rays
-  const R     = 22 + Math.random() * 10;
-  const hcx   = 40, hcy = 44;  // head center in viewBox 80x200
-  const tilt  = (Math.random()-0.5) * 18;
+  const col  = HYLICS_PALETTE[colorIdx % HYLICS_PALETTE.length];
+  const id   = paliCount++;
+  const rays = 18 + Math.floor(Math.random() * 14);
+  const R    = 22 + Math.random() * 10;
+  const hcx  = 40, hcy = 44;
+  const tilt = (Math.random()-0.5) * 18;
   const hasEye2 = Math.random() > 0.4;
+
+  // Light source offset (top-left of head)
+  const lx = (hcx - R*0.30).toFixed(1);
+  const ly = (hcy - R*0.34).toFixed(1);
 
   let s = `<svg xmlns="http://www.w3.org/2000/svg"
     width="${size}" height="${size*2.5}"
     viewBox="0 0 80 200" style="overflow:visible"
     transform="rotate(${tilt.toFixed(1)})">`;
 
-  // ── Thick chunky stem ──
+  // ── Gradient / filter defs ──
+  s += `<defs>
+    <radialGradient id="hg${id}" cx="${lx}" cy="${ly}" r="${(R*1.35).toFixed(1)}" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="${col.light}"/>
+      <stop offset="48%"  stop-color="${col.fill}"/>
+      <stop offset="100%" stop-color="${col.dark}"/>
+    </radialGradient>
+    <radialGradient id="sp${id}" cx="${lx}" cy="${ly}" r="${(R*0.52).toFixed(1)}" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="rgba(255,255,255,0.62)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+    <radialGradient id="bud${id}" cx="38%" cy="32%" r="55%" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="${col.light}"/>
+      <stop offset="60%"  stop-color="${col.fill}"/>
+      <stop offset="100%" stop-color="${col.dark}"/>
+    </radialGradient>
+    <linearGradient id="stG${id}" x1="${hcx-4}" y1="0" x2="${hcx+5}" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="${col.dark}"/>
+      <stop offset="38%"  stop-color="${col.fill}"/>
+      <stop offset="65%"  stop-color="${col.light}"/>
+      <stop offset="100%" stop-color="${col.dark}"/>
+    </linearGradient>
+  </defs>`;
+
+  // ── Stem with cylindrical shading ──
   const sw = (Math.random()-0.5)*6, sh = (Math.random()-0.5)*4;
   s += `<path d="M${hcx},${hcy+R*0.8} Q${hcx+sw},${hcy+60+sh} ${hcx+sw*1.4},190"
-    fill="none" stroke="${col.dark}" stroke-width="5" stroke-linecap="round"/>`;
+    fill="none" stroke="#000" stroke-width="8" stroke-linecap="round"/>`;
   s += `<path d="M${hcx},${hcy+R*0.8} Q${hcx+sw},${hcy+60+sh} ${hcx+sw*1.4},190"
-    fill="none" stroke="${col.fill}" stroke-width="3" stroke-linecap="round"/>`;
+    fill="none" stroke="url(#stG${id})" stroke-width="5.5" stroke-linecap="round"/>`;
+  // Specular highlight on stem
+  s += `<path d="M${(hcx-1.2).toFixed(1)},${(hcy+R*0.8).toFixed(1)} Q${(hcx+sw-1.2).toFixed(1)},${(hcy+60+sh).toFixed(1)} ${(hcx+sw*1.4-1).toFixed(1)},190"
+    fill="none" stroke="${col.light}" stroke-width="1.4" stroke-linecap="round" opacity="0.48"/>`;
 
-  // ── Stem leaf bumps ──
+  // ── Stem leaf bumps (volumetric) ──
   for (let i = 0; i < 2; i++) {
-    const ly = hcy + 65 + i*45 + Math.random()*20;
-    const side = (i%2 === 0 ? 1 : -1) * (8 + Math.random()*8);
-    const bp = blobPath(hcx+side, ly, 5+Math.random()*3, 7, 0.5);
-    s += `<path d="${bp}" fill="${col.fill}" stroke="#000" stroke-width="2"/>`;
+    const leafY  = hcy + 65 + i*45 + Math.random()*20;
+    const side   = (i%2 === 0 ? 1 : -1) * (8 + Math.random()*8);
+    const leafR  = 5 + Math.random()*3;
+    const bp     = blobPath(hcx+side, leafY, leafR, 7, 0.5);
+    const hlPath = blobPath(hcx+side - leafR*0.18, leafY - leafR*0.22, leafR*0.42, 5, 0.25);
+    s += `<path d="${bp}" fill="#000" stroke="#000" stroke-width="2.5"/>`;
+    s += `<path d="${bp}" fill="${col.fill}" stroke="none"/>`;
+    s += `<path d="${hlPath}" fill="${col.light}" opacity="0.52"/>`;
   }
 
-  // ── Ray spines (thick, outlined) ──
+  // ── Ray spines (volumetric: cylinder highlight) ──
   for (let i = 0; i < rays; i++) {
     const a    = (i/rays)*Math.PI*2 + (Math.random()-0.5)*0.2;
     const rLen = R * (0.65 + Math.random()*0.38);
     const x1   = hcx + Math.cos(a)*5, y1 = hcy + Math.sin(a)*5;
     const x2   = hcx + Math.cos(a)*rLen, y2 = hcy + Math.sin(a)*rLen;
-    const mx   = hcx + Math.cos(a)*rLen*0.5 + (Math.random()-0.5)*5;
-    const my   = hcy + Math.sin(a)*rLen*0.5 + (Math.random()-0.5)*5;
-    const tipR = 2.4 + Math.random()*2;
+    const qx   = hcx + Math.cos(a)*rLen*0.5 + (Math.random()-0.5)*5;
+    const qy   = hcy + Math.sin(a)*rLen*0.5 + (Math.random()-0.5)*5;
+    const tipR = 2.6 + Math.random()*2;
+    const w    = (2.8 + Math.random()).toFixed(1);
+    const d    = `M${x1.toFixed(1)},${y1.toFixed(1)} Q${qx.toFixed(1)},${qy.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`;
 
-    // Black outline
-    s += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}"
-      fill="none" stroke="#000" stroke-width="${(2.5+Math.random()).toFixed(1)}" stroke-linecap="round"/>`;
-    // Colored ray
-    s += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}"
-      fill="none" stroke="${col.fill}" stroke-width="${(1.2+Math.random()*0.8).toFixed(1)}" stroke-linecap="round"/>`;
+    s += `<path d="${d}" fill="none" stroke="#000" stroke-width="${(parseFloat(w)+2).toFixed(1)}" stroke-linecap="round"/>`;
+    s += `<path d="${d}" fill="none" stroke="${col.fill}" stroke-width="${w}" stroke-linecap="round"/>`;
+    // Cylinder highlight strip
+    s += `<path d="${d}" fill="none" stroke="${col.light}" stroke-width="${(parseFloat(w)*0.32).toFixed(1)}" stroke-linecap="round" opacity="0.58"/>`;
 
-    // Chunky bud tip (HYLICS rounded nub) - black outline + fill
-    s += `<circle cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="${(tipR+1.2).toFixed(1)}" fill="#000"/>`;
-    s += `<circle cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="${tipR.toFixed(1)}" fill="${col.light}"/>`;
+    // Bud tip — sphere shading
+    s += `<circle cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="${(tipR+2).toFixed(1)}" fill="#000"/>`;
+    s += `<circle cx="${x2.toFixed(1)}" cy="${y2.toFixed(1)}" r="${(tipR+0.6).toFixed(1)}" fill="url(#bud${id})"/>`;
+    // Bud specular
+    s += `<circle cx="${(x2 - tipR*0.3).toFixed(1)}" cy="${(y2 - tipR*0.38).toFixed(1)}" r="${(tipR*0.32).toFixed(1)}" fill="#fff" opacity="0.72"/>`;
   }
 
-  // ── Lumpy blob head ──
+  // ── Lumpy blob head (volumetric) ──
   const headPath  = blobPath(hcx, hcy, R*0.82, 14, 0.45);
-  const head2Path = blobPath(hcx, hcy, R*0.56, 10, 0.3);
+  const headAO    = blobPath(hcx, hcy, R*0.54, 10, 0.28); // ambient occlusion blob
 
+  // Cast shadow below head (offset)
+  s += `<g transform="translate(3,4)" opacity="0.28"><path d="${headPath}" fill="#000"/></g>`;
+  // Black outline
   s += `<path d="${headPath}" fill="#000" stroke="#000" stroke-width="3"/>`;
-  s += `<path d="${headPath}" fill="${col.fill}" stroke="#000" stroke-width="2.5"/>`;
-  s += `<path d="${head2Path}" fill="${col.dark}" stroke="#000" stroke-width="1.5" opacity="0.7"/>`;
+  // Gradient fill (light from top-left)
+  s += `<path d="${headPath}" fill="url(#hg${id})" stroke="#000" stroke-width="2"/>`;
+  // Ambient occlusion / depth cavity
+  s += `<path d="${headAO}" fill="${col.dark}" opacity="0.38"/>`;
+  // Specular overlay
+  s += `<path d="${headPath}" fill="url(#sp${id})"/>`;
 
-  // ── Eyes (HYLICS dot eyes — slightly uneven) ──
-  const eo = R * 0.28;
-  const el = 3.5 + Math.random()*1.5;
-  const er = 3.2 + Math.random()*1.5;
+  // ── Eyes (with depth: iris, pupil, reflection) ──
+  const eo    = R * 0.28;
+  const el    = 3.5 + Math.random()*1.5;
+  const er    = 3.2 + Math.random()*1.5;
   const eyOff = (Math.random()-0.5)*3;
-  // Left eye
-  s += `<ellipse cx="${(hcx-eo*0.9).toFixed(1)}" cy="${(hcy+eyOff-2).toFixed(1)}"
-    rx="${(el+1).toFixed(1)}" ry="${(el+1.2).toFixed(1)}" fill="#fff" stroke="#000" stroke-width="1.5"/>`;
-  s += `<ellipse cx="${(hcx-eo*0.9).toFixed(1)}" cy="${(hcy+eyOff-2).toFixed(1)}"
-    rx="${el.toFixed(1)}" ry="${(el*1.1).toFixed(1)}" fill="${col.eye}"/>`;
-  s += `<circle cx="${(hcx-eo*0.9+1).toFixed(1)}" cy="${(hcy+eyOff-3).toFixed(1)}" r="1" fill="#fff" opacity="0.7"/>`;
-  // Right eye (or single big eye randomly)
-  if (hasEye2) {
-    s += `<ellipse cx="${(hcx+eo*0.9).toFixed(1)}" cy="${(hcy+eyOff-1).toFixed(1)}"
-      rx="${(er+1).toFixed(1)}" ry="${(er+1.2).toFixed(1)}" fill="#fff" stroke="#000" stroke-width="1.5"/>`;
-    s += `<ellipse cx="${(hcx+eo*0.9).toFixed(1)}" cy="${(hcy+eyOff-1).toFixed(1)}"
-      rx="${er.toFixed(1)}" ry="${(er*1.1).toFixed(1)}" fill="${col.eye}"/>`;
-    s += `<circle cx="${(hcx+eo*0.9+1).toFixed(1)}" cy="${(hcy+eyOff-2).toFixed(1)}" r="0.9" fill="#fff" opacity="0.7"/>`;
-  } else {
-    // Single cyclopean eye, bigger
-    s += `<ellipse cx="${hcx}" cy="${(hcy+eyOff-1).toFixed(1)}" rx="${(el+3).toFixed(1)}" ry="${(el+3.5).toFixed(1)}"
-      fill="#fff" stroke="#000" stroke-width="1.5"/>`;
-    s += `<ellipse cx="${hcx}" cy="${(hcy+eyOff-1).toFixed(1)}" rx="${(el+2).toFixed(1)}" ry="${(el+2.5).toFixed(1)}"
+
+  function drawEye(ecx, ecy, erx, ery) {
+    // Sclera
+    s += `<ellipse cx="${ecx.toFixed(1)}" cy="${ecy.toFixed(1)}" rx="${(erx+1.3).toFixed(1)}" ry="${(ery+1.5).toFixed(1)}"
+      fill="#fff" stroke="#000" stroke-width="1.2"/>`;
+    // Sclera subtle gradient — upper bright
+    s += `<ellipse cx="${ecx.toFixed(1)}" cy="${(ecy-ery*0.22).toFixed(1)}" rx="${(erx*0.75).toFixed(1)}" ry="${(ery*0.45).toFixed(1)}"
+      fill="rgba(255,255,255,0.45)"/>`;
+    // Iris
+    s += `<ellipse cx="${ecx.toFixed(1)}" cy="${ecy.toFixed(1)}" rx="${erx.toFixed(1)}" ry="${ery.toFixed(1)}"
       fill="${col.eye}"/>`;
-    s += `<circle cx="${(hcx+1.5)}" cy="${(hcy+eyOff-3)}" r="1.4" fill="#fff" opacity="0.7"/>`;
+    // Iris iridescent ring
+    s += `<ellipse cx="${ecx.toFixed(1)}" cy="${ecy.toFixed(1)}" rx="${(erx*0.65).toFixed(1)}" ry="${(ery*0.65).toFixed(1)}"
+      fill="none" stroke="${col.fill}" stroke-width="0.7" opacity="0.45"/>`;
+    // Pupil
+    s += `<ellipse cx="${ecx.toFixed(1)}" cy="${ecy.toFixed(1)}" rx="${(erx*0.38).toFixed(1)}" ry="${(ery*0.42).toFixed(1)}"
+      fill="#000"/>`;
+    // Primary specular
+    s += `<circle cx="${(ecx - erx*0.26).toFixed(1)}" cy="${(ecy - ery*0.36).toFixed(1)}" r="1.15" fill="#fff" opacity="0.92"/>`;
+    // Secondary micro-specular
+    s += `<circle cx="${(ecx + erx*0.2).toFixed(1)}" cy="${(ecy - ery*0.15).toFixed(1)}" r="0.5" fill="#fff" opacity="0.6"/>`;
   }
 
-  // ── Mouth (small arc or scallop) ──
-  const mx0 = hcx - 5 + Math.random()*2, mx1 = hcx + 5 - Math.random()*2;
+  if (hasEye2) {
+    drawEye(hcx - eo*0.9, hcy + eyOff - 2, el, el*1.1);
+    drawEye(hcx + eo*0.9, hcy + eyOff - 1, er, er*1.1);
+  } else {
+    drawEye(hcx, hcy + eyOff - 1, el + 3, (el + 3)*1.1);
+  }
+
+  // ── Mouth ──
+  const mx0    = hcx - 5 + Math.random()*2, mx1 = hcx + 5 - Math.random()*2;
   const myBase = hcy + R*0.38;
-  const moodY  = myBase + (Math.random() > 0.5 ? 3 : -3);
+  const moodY  = myBase + (Math.random() > 0.5 ? 3.5 : -3.5);
   s += `<path d="M${mx0.toFixed(1)},${myBase.toFixed(1)} Q${hcx},${moodY.toFixed(1)} ${mx1.toFixed(1)},${myBase.toFixed(1)}"
     fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"/>`;
+  // Mouth gloss
+  s += `<path d="M${(mx0+0.6).toFixed(1)},${(myBase-0.7).toFixed(1)} Q${hcx},${(moodY-1).toFixed(1)} ${(mx1-0.6).toFixed(1)},${(myBase-0.7).toFixed(1)}"
+    fill="none" stroke="${col.light}" stroke-width="0.7" stroke-linecap="round" opacity="0.5"/>`;
 
-  // ── Glowing center spot ──
-  s += `<circle cx="${hcx}" cy="${hcy}" r="2.5" fill="${col.light}" opacity="0.85"/>`;
+  // ── Core glow spot ──
+  s += `<circle cx="${hcx}" cy="${hcy}" r="3.2" fill="${col.light}" opacity="0.82"/>`;
+  s += `<circle cx="${hcx}" cy="${hcy}" r="1.5" fill="#fff" opacity="0.95"/>`;
 
   s += `</svg>`;
   return s;
@@ -909,9 +966,10 @@ function addPlant(x, y, midi) {
   wrapper.style.setProperty('--sway-amt', `${amt}`);
   wrapper.style.animationDelay = `${Math.random() * 0.6}s`;
 
-  // Apply clay wobble filter on SVG children
-  wrapper.style.filter = `drop-shadow(0 0 8px ${HYLICS_PALETTE[cidx].fill}aa)
-    drop-shadow(0 0 2px #000)`;
+  // Volumetric drop-shadow: downward cast shadow + neon glow
+  wrapper.style.filter = `drop-shadow(0 6px 10px rgba(0,0,0,0.72))
+    drop-shadow(0 0 16px ${HYLICS_PALETTE[cidx].fill}99)
+    drop-shadow(0 2px 4px rgba(0,0,0,0.9))`;
 
   wrapper.innerHTML = makePalipalanSVG(size, cidx);
 
