@@ -12,7 +12,7 @@
         body { 
             margin: 0; 
             overflow: hidden; 
-            background-color: #050814; /* Dark gloomy background */
+            background-color: #050814; 
             font-family: 'Courier New', Courier, monospace;
         }
 
@@ -45,7 +45,6 @@
             animation: wave 2s infinite ease-in-out;
         }
 
-        /* Delays para criar o efeito de onda passando da esquerda para a direita */
         .wave-text span:nth-child(1) { animation-delay: 0.0s; }
         .wave-text span:nth-child(2) { animation-delay: 0.1s; }
         .wave-text span:nth-child(3) { animation-delay: 0.2s; }
@@ -55,6 +54,60 @@
         .wave-text span:nth-child(7) { animation-delay: 0.6s; }
         .wave-text span:nth-child(8) { animation-delay: 0.7s; }
         .wave-text span:nth-child(9) { animation-delay: 0.8s; }
+
+        /* --- FILTRO CRT TV --- */
+        .crt-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 100;
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .crt-overlay::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: radial-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 100%),
+                        rgba(18, 16, 16, 0.1);
+            opacity: 0.8;
+            z-index: 101;
+            pointer-events: none;
+            animation: flicker 0.15s infinite;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.27861; }
+            5% { opacity: 0.34769; }
+            10% { opacity: 0.23604; }
+            15% { opacity: 0.90626; }
+            20% { opacity: 0.18128; }
+            25% { opacity: 0.83891; }
+            30% { opacity: 0.65583; }
+            35% { opacity: 0.57807; }
+            40% { opacity: 0.26559; }
+            45% { opacity: 0.84693; }
+            50% { opacity: 0.96019; }
+            55% { opacity: 0.08594; }
+            60% { opacity: 0.20313; }
+            65% { opacity: 0.71988; }
+            70% { opacity: 0.53455; }
+            75% { opacity: 0.37288; }
+            80% { opacity: 0.71428; }
+            85% { opacity: 0.70419; }
+            90% { opacity: 0.7003; }
+            95% { opacity: 0.36108; }
+            100% { opacity: 0.24387; }
+        }
 
     </style>
     <!-- Import map for Three.js -->
@@ -69,8 +122,11 @@
 </head>
 <body>
 
+    <!-- Filtro CRT sobre tudo -->
+    <div class="crt-overlay"></div>
+
     <!-- Fundo de Horizonte Ambientado (Iframe Desfocado e Espelhado) -->
-    <div id="ambient-bg" class="absolute inset-0 overflow-hidden bg-[#12182b] flex justify-center items-center pointer-events-none" style="z-index: 0;">
+    <div id="ambient-bg" class="absolute inset-0 overflow-hidden bg-[#141414] flex justify-center items-center pointer-events-none" style="z-index: 0;">
         <iframe class="w-[150vw] h-[150vh] scale-x-[-1] opacity-40" style="filter: blur(80px); pointer-events: none;" 
         src="https://www.youtube.com/embed/yVWU6NyW0mU?list=RDyVWU6NyW0mU&autoplay=1&mute=1&controls=0&disablekb=1" 
         allow="autoplay" frameborder="0"></iframe>
@@ -91,27 +147,25 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 
-        // 1. Scene Setup - Fundo Transparente para revelar o horizonte espelhado
+        // 1. Scene Setup
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
-        const fogColor = new THREE.Color(0x12182b);
-        // scene.background = fogColor; -> Removido para manter a transparência base
-        scene.fog = new THREE.FogExp2(fogColor, 0.06); // O nevoeiro mescla o chão 3D com o fundo de vídeo
+        const fogColor = new THREE.Color(0x141414); 
+        scene.fog = new THREE.FogExp2(fogColor, 0.06); 
 
         // 2. Camera Setup
         const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 3, 10); // Visão frontal da TV
+        camera.position.set(0, 3, 10); 
 
-        // 3. Renderer Setup (Com Alpha Ativado)
+        // 3. Renderer Setup
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setClearColor(0x000000, 0); // Torna o WebGL transparente
+        renderer.setClearColor(0x000000, 0); 
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(renderer.domElement);
 
-        // CSS3D Renderer para o iframe do YouTube (Na frente do WebGL)
         const cssRenderer = new CSS3DRenderer();
         cssRenderer.setSize(window.innerWidth, window.innerHeight);
         cssRenderer.domElement.style.position = 'absolute';
@@ -133,10 +187,10 @@
         controls.target.set(0, 1.5, 0);
 
         // 5. Lighting Setup
-        const ambientLight = new THREE.AmbientLight(0x203050, 1.5);
+        const ambientLight = new THREE.AmbientLight(0x404040, 2.0); 
         scene.add(ambientLight);
 
-        const moonLight = new THREE.DirectionalLight(0x4466aa, 0.8);
+        const moonLight = new THREE.DirectionalLight(0xcccccc, 0.6); 
         moonLight.position.set(-5, 10, 5);
         moonLight.castShadow = true;
         moonLight.shadow.mapSize.width = 1024;
@@ -158,7 +212,6 @@
         scene.add(beamLight);
         scene.add(beamLight.target);
 
-        // Geometria visível do feixe de luz
         const beamGeo = new THREE.CylinderGeometry(0.01, 5.5, beamHeight, 32, 1, true);
         beamGeo.translate(0, beamHeight / 2, 0); 
         
@@ -201,10 +254,10 @@
         const beamMesh = new THREE.Mesh(beamGeo, beamMat);
         scene.add(beamMesh);
 
-        // 6. Chão (Ambiente)
+        // 6. Chão
         const floorGeo = new THREE.PlaneGeometry(50, 50);
         const floorMat = new THREE.MeshStandardMaterial({ 
-            color: 0x0a0a0f,
+            color: 0x111111, 
             roughness: 0.9,
         });
         const floor = new THREE.Mesh(floorGeo, floorMat);
@@ -212,16 +265,14 @@
         floor.receiveShadow = true;
         scene.add(floor);
 
-        // 7. Tapete Psicadélico (Padrão Geométrico)
-        const rugGeo = new THREE.BoxGeometry(6, 0.05, 4);
-        
+        // 7. Tapete Persa
+        const rugGeo = new THREE.BoxGeometry(8.0, 0.05, 5.5); 
         const rugMat = new THREE.MeshStandardMaterial({ 
             color: 0x111111,
-            roughness: 0.7,
-            metalness: 0.3
+            roughness: 0.9,
+            metalness: 0.0
         });
 
-        // Injetando código GLSL Psicadélico Geométrico
         rugMat.onBeforeCompile = (shader) => {
             shader.defines = shader.defines || {};
             shader.defines.USE_UV = '';
@@ -234,48 +285,57 @@
             `.replace(
                 `#include <color_fragment>`,
                 `#include <color_fragment>
-                
-                // Padrão Geométrico (Losangos e Quadrados em Grade)
-                vec2 uv = vUv * 8.0; 
-                
-                // Adiciona movimento hipnótico
-                uv.x += time * 0.3;
-                uv.y += sin(time * 0.5) * 0.2;
-                
-                // Repetição local
-                vec2 grid = fract(uv) - 0.5;
-                
-                // Forma de losango duro
-                float d = abs(grid.x) + abs(grid.y);
-                float diamond = step(0.4, d); 
-                
-                // Quadrados que expandem e contraem dentro e fora
-                float sqDist = max(abs(grid.x), abs(grid.y));
-                float squares = step(0.1, abs(sin(sqDist * 30.0 - time * 4.0))); 
-                
-                // Paleta de Cores Psicadélica e Vibrante
-                vec3 c1 = vec3(1.0, 0.1, 0.6); // Rosa Néon
-                vec3 c2 = vec3(0.0, 0.9, 0.8); // Ciano
-                vec3 c3 = vec3(0.9, 0.8, 0.0); // Amarelo
-                vec3 c4 = vec3(0.3, 0.0, 0.8); // Roxo Profundo
-                
-                // Mistura geométrica de cores
-                vec3 psychColor = mix(c1, c2, step(0.0, sin(vUv.x * 15.0 + time)));
-                psychColor = mix(psychColor, c3, diamond);
-                psychColor = mix(psychColor, c4, squares * (1.0 - diamond));
-                
-                // Substituto da cor base pelo padrão psicadélico
-                diffuseColor.rgb = mix(diffuseColor.rgb, psychColor, 0.85);
+                vec2 uv = vUv;
+                vec2 center = uv - 0.5;
+                center.x *= 1.45;
+                vec2 warp = uv * 12.0;
+                float t = time * 0.3;
+                warp.x += sin(warp.y * 0.8 + t);
+                warp.y += cos(warp.x * 0.8 - t * 0.5);
+                float pattern = sin(warp.x) * cos(warp.y);
+                pattern += sin(warp.x * 2.0 - t) * cos(warp.y * 2.0) * 0.5;
+                pattern += sin(warp.x * 4.0 + t) * cos(warp.y * 4.0) * 0.25;
+                float r = length(center);
+                float angle = atan(center.y, center.x);
+                float medallion = r + sin(angle * 12.0 + time * 1.5) * 0.03; 
+                vec3 carmine = vec3(0.85, 0.10, 0.15); 
+                vec3 gold = vec3(0.95, 0.75, 0.10);    
+                vec3 navy = vec3(0.10, 0.25, 0.50);    
+                vec3 cream = vec3(1.00, 0.95, 0.85);   
+                vec3 rugColor = mix(carmine, navy, smoothstep(-0.4, 0.4, pattern));
+                rugColor = mix(rugColor, cream, smoothstep(0.7, 1.0, pattern));
+                if (medallion < 0.25) {
+                    rugColor = mix(gold, carmine, smoothstep(0.0, 0.2, pattern + r));
+                } else if (medallion < 0.28) {
+                    rugColor = gold;
+                }
+                float borderX = min(uv.x, 1.0 - uv.x);
+                float borderY = min(uv.y, 1.0 - uv.y);
+                float minDist = min(borderX, borderY);
+                if (minDist < 0.02) {
+                    rugColor = cream;
+                } else if (minDist < 0.06) {
+                    rugColor = navy;
+                } else if (minDist < 0.07) {
+                    rugColor = gold;
+                } else if (minDist < 0.15) {
+                    float subPattern = sin(uv.x * 40.0 + time) * cos(uv.y * 40.0 - time);
+                    rugColor = mix(carmine, gold, smoothstep(-0.5, 0.5, subPattern));
+                } else if (minDist < 0.16) {
+                    rugColor = gold;
+                }
+                diffuseColor.rgb = mix(diffuseColor.rgb, rugColor, 0.95);
                 `
             );
         };
 
         const rug = new THREE.Mesh(rugGeo, rugMat);
         rug.position.y = 0.025;
+        rug.position.z = -0.8; 
         rug.receiveShadow = true;
         scene.add(rug);
 
-        // 8. Construção da TV (Gabinete Marrom - Estilo CRT)
+        // 8. Construção da TV
         const tvGroup = new THREE.Group();
 
         const rackGeo = new THREE.BoxGeometry(4.5, 0.8, 3.5);
@@ -289,10 +349,7 @@
         rack.receiveShadow = true;
         tvGroup.add(rack);
 
-        const tvMat = new THREE.MeshStandardMaterial({ 
-            color: 0x2a160b, 
-            roughness: 0.7
-        });
+        const tvMat = new THREE.MeshStandardMaterial({ color: 0x2a160b, roughness: 0.7 });
 
         const tvFrontGeo = new THREE.BoxGeometry(3.6, 2.4, 0.6);
         const tvFront = new THREE.Mesh(tvFrontGeo, tvMat);
@@ -322,13 +379,61 @@
         tvGroup.add(frame);
 
         const screenGeo = new THREE.PlaneGeometry(3.0, 1.8);
-        const screenMat = new THREE.MeshStandardMaterial({ 
-            color: 0x050505, 
-            roughness: 0.8
-        });
+        const screenMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.8 });
         const screen = new THREE.Mesh(screenGeo, screenMat);
         screen.position.set(0, 2.0, 0.43); 
         tvGroup.add(screen);
+
+        // --- PAINEL DE CONTROLE REATIVO ---
+        const faceCanvas = document.createElement('canvas');
+        faceCanvas.width = 256;
+        faceCanvas.height = 64;
+        const faceCtx = faceCanvas.getContext('2d');
+        const faceTex = new THREE.CanvasTexture(faceCanvas);
+        
+        function updateFace(text, color) {
+            faceCtx.fillStyle = '#0a0a0a'; 
+            faceCtx.fillRect(0, 0, 256, 64);
+            faceCtx.font = 'bold 45px "Courier New", monospace';
+            faceCtx.fillStyle = color;
+            faceCtx.textAlign = 'center';
+            faceCtx.textBaseline = 'middle';
+            faceCtx.shadowColor = color;
+            faceCtx.shadowBlur = 12;
+            faceCtx.fillText(text, 128, 36);
+            faceCtx.shadowBlur = 0;
+            faceTex.needsUpdate = true;
+        }
+        
+        updateFace('^ _ ^', '#00ffcc');
+
+        const faceMat = new THREE.MeshBasicMaterial({ map: faceTex });
+        const faceMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.3), faceMat);
+        faceMesh.position.set(-0.8, 0.4, 0.96); 
+        tvGroup.add(faceMesh);
+
+        const controlsGroup = new THREE.Group();
+        const knobGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.1, 16);
+        knobGeo.rotateX(Math.PI / 2);
+        const btnGeo = new THREE.BoxGeometry(0.15, 0.08, 0.1);
+
+        const reactiveMats = [];
+        const reactiveMeshes = [];
+
+        for(let i = 0; i < 3; i++) {
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: 0x111111, 
+                emissive: i === 0 ? 0xff0055 : (i === 1 ? 0x00aaff : 0xffaa00),
+                emissiveIntensity: 0.0,
+                roughness: 0.6
+            });
+            const mesh = new THREE.Mesh(i < 2 ? btnGeo : knobGeo, mat);
+            mesh.position.set(0.5 + i * 0.3, 0.4, 0.96); 
+            controlsGroup.add(mesh);
+            reactiveMats.push(mat);
+            reactiveMeshes.push(mesh);
+        }
+        tvGroup.add(controlsGroup);
 
         const divInfo = document.createElement('div');
         divInfo.style.width = '480px'; 
@@ -350,38 +455,54 @@
         cssObject.position.set(0, 2.0, 0.44); 
         tvGroup.add(cssObject);
 
-        const tvLight = new THREE.PointLight(0x4488ff, 2.0, 15);
+        const tvLight = new THREE.PointLight(0xeeeeff, 1.5, 15);
         tvLight.position.set(0, 2.0, 1.0);
         tvLight.castShadow = true;
         tvGroup.add(tvLight);
 
         scene.add(tvGroup);
 
-        // 9. Animation Loop
         const clock = new THREE.Clock();
 
         function animate() {
             requestAnimationFrame(animate);
-            
             const time = clock.getElapsedTime();
 
             if (rugMat.userData.shader) {
                 rugMat.userData.shader.uniforms.time.value = time;
             }
 
+            const beat1 = Math.pow(Math.sin(time * 5.0), 4);
+            const beat2 = Math.pow(Math.cos(time * 2.5), 2);
+            const randomSpike = Math.random() > 0.95 ? Math.random() : 0;
+
+            reactiveMeshes.forEach((mesh, index) => {
+                const intensity = index === 0 ? beat1 : (index === 1 ? beat2 : randomSpike);
+                reactiveMats[index].emissiveIntensity = intensity * 2.5;
+                mesh.position.z = 0.96 + intensity * 0.03; 
+            });
+
+            if (Math.floor(time * 12) % 3 === 0) { 
+                let faceStr = "- _ -";
+                let faceColor = "#00ffcc"; 
+                if (randomSpike > 0.5) { faceStr = "O _ O"; faceColor = "#ff0055"; }
+                else if (beat1 > 0.8) { faceStr = "> _ <"; faceColor = "#ffaa00"; }
+                else if (beat2 > 0.7) { faceStr = "^ _ ^"; faceColor = "#00aaff"; }
+                updateFace(faceStr, faceColor);
+            }
+
             const pulse = Math.sin(time * 3);
             beamLight.intensity = 30.0 + pulse * 10.0;
             beamMat.uniforms.beamOpacity.value = 0.08 + pulse * 0.03;
 
-            const flicker = Math.random() * 0.15;
-            tvLight.intensity = 1.5 + flicker * 3;
+            const flickerVal = Math.random() * 0.15;
+            tvLight.intensity = 1.5 + flickerVal * 3;
 
             controls.update();
             renderer.render(scene, camera);
             cssRenderer.render(scene, camera); 
         }
 
-        // 10. Handle Window Resize
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -389,10 +510,7 @@
             cssRenderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Start animation loop
-        window.onload = () => {
-            animate();
-        };
+        window.onload = () => { animate(); };
 
     </script>
 </body>
