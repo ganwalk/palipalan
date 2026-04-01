@@ -58,59 +58,78 @@
         /* --- FILTRO CRT TV --- */
         .crt-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            top: 0; left: 0; width: 100vw; height: 100vh;
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%), 
                         linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-            z-index: 100;
-            background-size: 100% 3px, 3px 100%;
-            pointer-events: none;
+            z-index: 100; background-size: 100% 3px, 3px 100%; pointer-events: none;
         }
 
         .crt-overlay::after {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            background: radial-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 100%),
-                        rgba(18, 16, 16, 0.1);
-            opacity: 0.8;
-            z-index: 101;
-            pointer-events: none;
-            animation: flicker 0.15s infinite;
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: radial-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 100%), rgba(18, 16, 16, 0.1);
+            opacity: 0.8; z-index: 101; pointer-events: none; animation: flicker 0.15s infinite;
         }
 
         @keyframes flicker {
-            0% { opacity: 0.27861; }
-            5% { opacity: 0.34769; }
-            10% { opacity: 0.23604; }
-            15% { opacity: 0.90626; }
-            20% { opacity: 0.18128; }
-            25% { opacity: 0.83891; }
-            30% { opacity: 0.65583; }
-            35% { opacity: 0.57807; }
-            40% { opacity: 0.26559; }
-            45% { opacity: 0.84693; }
-            50% { opacity: 0.96019; }
-            55% { opacity: 0.08594; }
-            60% { opacity: 0.20313; }
-            65% { opacity: 0.71988; }
-            70% { opacity: 0.53455; }
-            75% { opacity: 0.37288; }
-            80% { opacity: 0.71428; }
-            85% { opacity: 0.70419; }
-            90% { opacity: 0.7003; }
-            95% { opacity: 0.36108; }
-            100% { opacity: 0.24387; }
+            0% { opacity: 0.27; } 50% { opacity: 0.35; } 100% { opacity: 0.24; }
+        }
+
+        /* --- DISPLAY DO ROBO --- */
+        .robot-screen {
+            background: #000d04;
+            border: 2px solid #0d2010;
+            border-radius: 10px;
+            padding: 14px 28px 10px;
+            box-shadow:
+                inset 0 0 40px rgba(0,50,0,0.8),
+                inset 0 2px 8px rgba(0,0,0,0.9),
+                0 0 18px rgba(0,80,0,0.35);
+            font-family: 'Courier New', monospace;
+            color: #00e060;
+            text-shadow: 0 0 9px #00e060, 0 0 18px rgba(0,224,96,0.45);
+            text-align: center;
+            line-height: 1.4;
+            width: 260px;
+            position: relative;
+            pointer-events: none;
+        }
+
+        .robot-screen::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: repeating-linear-gradient(
+                0deg, transparent 0px, transparent 2px,
+                rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 3px
+            );
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        .robot-face-line {
+            font-size: 1.5rem; letter-spacing: 4px;
+            display: block;
+            transition: all 0.1s;
+        }
+
+        .robot-status-line {
+            font-size: 0.62rem; letter-spacing: 3px;
+            color: rgba(0,224,96,0.6);
+            display: block;
+            min-height: 0.85rem;
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        .robot-label { 
+            font-size: 0.44rem; 
+            letter-spacing: 2px; 
+            color: #1e2e1c; 
+            text-transform: uppercase; 
+            display: block; 
+            margin-top: 8px;
         }
 
     </style>
-    <!-- Import map for Three.js -->
     <script type="importmap">
       {
         "imports": {
@@ -122,20 +141,17 @@
 </head>
 <body>
 
-    <!-- Filtro CRT sobre tudo -->
     <div class="crt-overlay"></div>
 
     <!-- Fundo de Horizonte Ambientado (Iframe Desfocado e Espelhado) -->
     <div id="ambient-bg" class="absolute inset-0 overflow-hidden bg-[#141414] flex justify-center items-center pointer-events-none" style="z-index: 0;">
         <iframe class="w-[150vw] h-[150vh] scale-x-[-1] opacity-40" style="filter: blur(80px); pointer-events: none;" 
-        src="https://www.youtube.com/embed/yVWU6NyW0mU?list=RDyVWU6NyW0mU&autoplay=1&mute=1&controls=0&disablekb=1" 
+        src="https://www.youtube.com/embed/BoZX0cqZUh4?autoplay=1&mute=1&controls=0&disablekb=1" 
         allow="autoplay" frameborder="0"></iframe>
     </div>
 
-    <!-- 3D Canvas Container -->
     <div id="canvas-container" class="absolute inset-0" style="z-index: 10;"></div>
 
-    <!-- UI Overlay - Texto "palipalan" -->
     <div class="absolute inset-0 pointer-events-none flex justify-center items-start pt-20" style="z-index: 20;">
         <div class="wave-text">
             <span>p</span><span>a</span><span>l</span><span>i</span><span>p</span><span>a</span><span>l</span><span>a</span><span>n</span>
@@ -147,17 +163,14 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 
-        // 1. Scene Setup
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         const fogColor = new THREE.Color(0x141414); 
         scene.fog = new THREE.FogExp2(fogColor, 0.06); 
 
-        // 2. Camera Setup
         const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
         camera.position.set(0, 3, 10); 
 
-        // 3. Renderer Setup
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setClearColor(0x000000, 0); 
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -175,7 +188,6 @@
         cssRenderer.domElement.style.zIndex = '15'; 
         document.body.appendChild(cssRenderer.domElement);
 
-        // 4. Controls Setup
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
@@ -186,7 +198,6 @@
         controls.maxAzimuthAngle = Math.PI / 3;
         controls.target.set(0, 1.5, 0);
 
-        // 5. Lighting Setup
         const ambientLight = new THREE.AmbientLight(0x404040, 2.0); 
         scene.add(ambientLight);
 
@@ -197,24 +208,19 @@
         moonLight.shadow.mapSize.height = 1024;
         scene.add(moonLight);
 
-        // Feixe de Luz Amarela
         const beamHeight = 15.0; 
         const beamZ = 3.0; 
-
         const beamLight = new THREE.SpotLight(0xffdd00, 40.0); 
         beamLight.position.set(0, beamHeight, beamZ); 
         beamLight.target.position.set(0, 1.0, 0); 
         beamLight.angle = Math.PI / 4.5; 
         beamLight.penumbra = 0.6;
         beamLight.castShadow = true;
-        beamLight.shadow.mapSize.width = 1024;
-        beamLight.shadow.mapSize.height = 1024;
         scene.add(beamLight);
         scene.add(beamLight.target);
 
         const beamGeo = new THREE.CylinderGeometry(0.01, 5.5, beamHeight, 32, 1, true);
         beamGeo.translate(0, beamHeight / 2, 0); 
-        
         const posAttribute = beamGeo.attributes.position;
         for (let i = 0; i < posAttribute.count; i++) {
             const y = posAttribute.getY(i);
@@ -228,148 +234,69 @@
                 beamColor: { value: new THREE.Color(0xffdd00) },
                 beamOpacity: { value: 0.08 }
             },
-            vertexShader: `
-                varying vec2 vUv;
-                void main() {
-                    vUv = uv;
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                }
-            `,
-            fragmentShader: `
-                uniform vec3 beamColor;
-                uniform float beamOpacity;
-                varying vec2 vUv;
-                void main() {
-                    float fadeBottom = smoothstep(0.0, 0.25, vUv.y);
-                    float fadeTop = smoothstep(1.0, 0.6, vUv.y);
-                    gl_FragColor = vec4(beamColor, beamOpacity * fadeBottom * fadeTop);
-                }
-            `,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            side: THREE.DoubleSide
+            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+            fragmentShader: `uniform vec3 beamColor; uniform float beamOpacity; varying vec2 vUv; void main() { float fadeBottom = smoothstep(0.0, 0.25, vUv.y); float fadeTop = smoothstep(1.0, 0.6, vUv.y); gl_FragColor = vec4(beamColor, beamOpacity * fadeBottom * fadeTop); }`,
+            transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
         });
-        
         const beamMesh = new THREE.Mesh(beamGeo, beamMat);
         scene.add(beamMesh);
 
-        // 6. Chão
         const floorGeo = new THREE.PlaneGeometry(50, 50);
-        const floorMat = new THREE.MeshStandardMaterial({ 
-            color: 0x111111, 
-            roughness: 0.9,
-        });
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         scene.add(floor);
 
-        // 7. Tapete Persa
         const rugGeo = new THREE.BoxGeometry(8.0, 0.05, 5.5); 
-        const rugMat = new THREE.MeshStandardMaterial({ 
-            color: 0x111111,
-            roughness: 0.9,
-            metalness: 0.0
-        });
-
+        const rugMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9, metalness: 0.0 });
         rugMat.onBeforeCompile = (shader) => {
-            shader.defines = shader.defines || {};
-            shader.defines.USE_UV = '';
+            shader.defines = shader.defines || {}; 
+            shader.defines.USE_UV = ''; 
             shader.uniforms.time = { value: 0 };
             rugMat.userData.shader = shader; 
             
-            shader.fragmentShader = `
-                uniform float time;
-                ${shader.fragmentShader}
-            `.replace(
-                `#include <color_fragment>`,
-                `#include <color_fragment>
-                vec2 uv = vUv;
-                vec2 center = uv - 0.5;
-                center.x *= 1.45;
-                vec2 warp = uv * 12.0;
-                float t = time * 0.3;
-                warp.x += sin(warp.y * 0.8 + t);
-                warp.y += cos(warp.x * 0.8 - t * 0.5);
-                float pattern = sin(warp.x) * cos(warp.y);
-                pattern += sin(warp.x * 2.0 - t) * cos(warp.y * 2.0) * 0.5;
-                pattern += sin(warp.x * 4.0 + t) * cos(warp.y * 4.0) * 0.25;
-                float r = length(center);
-                float angle = atan(center.y, center.x);
-                float medallion = r + sin(angle * 12.0 + time * 1.5) * 0.03; 
-                vec3 carmine = vec3(0.85, 0.10, 0.15); 
-                vec3 gold = vec3(0.95, 0.75, 0.10);    
-                vec3 navy = vec3(0.10, 0.25, 0.50);    
-                vec3 cream = vec3(1.00, 0.95, 0.85);   
-                vec3 rugColor = mix(carmine, navy, smoothstep(-0.4, 0.4, pattern));
-                rugColor = mix(rugColor, cream, smoothstep(0.7, 1.0, pattern));
-                if (medallion < 0.25) {
-                    rugColor = mix(gold, carmine, smoothstep(0.0, 0.2, pattern + r));
-                } else if (medallion < 0.28) {
-                    rugColor = gold;
-                }
-                float borderX = min(uv.x, 1.0 - uv.x);
-                float borderY = min(uv.y, 1.0 - uv.y);
-                float minDist = min(borderX, borderY);
-                if (minDist < 0.02) {
-                    rugColor = cream;
-                } else if (minDist < 0.06) {
-                    rugColor = navy;
-                } else if (minDist < 0.07) {
-                    rugColor = gold;
-                } else if (minDist < 0.15) {
-                    float subPattern = sin(uv.x * 40.0 + time) * cos(uv.y * 40.0 - time);
-                    rugColor = mix(carmine, gold, smoothstep(-0.5, 0.5, subPattern));
-                } else if (minDist < 0.16) {
-                    rugColor = gold;
-                }
+            shader.fragmentShader = `uniform float time;\n ${shader.fragmentShader}`.replace(`#include <color_fragment>`, `
+                #include <color_fragment>
+                vec2 uv = vUv; vec2 center = uv - 0.5; center.x *= 1.45; vec2 warp = uv * 12.0; float t = time * 0.3;
+                warp.x += sin(warp.y * 0.8 + t); warp.y += cos(warp.x * 0.8 - t * 0.5);
+                float pattern = sin(warp.x) * cos(warp.y); pattern += sin(warp.x * 2.0 - t) * cos(warp.y * 2.0) * 0.5;
+                float r = length(center); float angle = atan(center.y, center.x); float medallion = r + sin(angle * 12.0 + time * 1.5) * 0.03; 
+                vec3 carmine = vec3(0.85, 0.10, 0.15); vec3 gold = vec3(0.95, 0.75, 0.10); vec3 navy = vec3(0.10, 0.25, 0.50); vec3 cream = vec3(1.00, 0.95, 0.85);   
+                vec3 rugColor = mix(carmine, navy, smoothstep(-0.4, 0.4, pattern)); rugColor = mix(rugColor, cream, smoothstep(0.7, 1.0, pattern));
+                if (medallion < 0.25) { rugColor = mix(gold, carmine, smoothstep(0.0, 0.2, pattern + r)); } else if (medallion < 0.28) { rugColor = gold; }
+                float borderX = min(uv.x, 1.0 - uv.x); float borderY = min(uv.y, 1.0 - uv.y); float minDist = min(borderX, borderY);
+                if (minDist < 0.02) rugColor = cream; else if (minDist < 0.06) rugColor = navy; else if (minDist < 0.07) rugColor = gold;
+                else if (minDist < 0.15) rugColor = mix(carmine, gold, smoothstep(-0.5, 0.5, sin(uv.x * 40.0 + time) * cos(uv.y * 40.0 - time)));
+                else if (minDist < 0.16) rugColor = gold;
                 diffuseColor.rgb = mix(diffuseColor.rgb, rugColor, 0.95);
-                `
-            );
+            `);
         };
-
         const rug = new THREE.Mesh(rugGeo, rugMat);
-        rug.position.y = 0.025;
-        rug.position.z = -0.8; 
-        rug.receiveShadow = true;
+        rug.position.y = 0.025; rug.position.z = -0.8; rug.receiveShadow = true;
         scene.add(rug);
 
-        // 8. Construção da TV
         const tvGroup = new THREE.Group();
-
         const rackGeo = new THREE.BoxGeometry(4.5, 0.8, 3.5);
-        const rackMat = new THREE.MeshStandardMaterial({ 
-            color: 0x3d2314, 
-            roughness: 0.8 
-        });
+        const rackMat = new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.8 });
         const rack = new THREE.Mesh(rackGeo, rackMat);
-        rack.position.set(0, 0.4, -0.8); 
-        rack.castShadow = true;
-        rack.receiveShadow = true;
+        rack.position.set(0, 0.4, -0.8); rack.castShadow = true; rack.receiveShadow = true;
         tvGroup.add(rack);
 
         const tvMat = new THREE.MeshStandardMaterial({ color: 0x2a160b, roughness: 0.7 });
-
         const tvFrontGeo = new THREE.BoxGeometry(3.6, 2.4, 0.6);
         const tvFront = new THREE.Mesh(tvFrontGeo, tvMat);
-        tvFront.position.set(0, 2.0, 0);
-        tvFront.castShadow = true;
-        tvFront.receiveShadow = true;
+        tvFront.position.set(0, 2.0, 0); tvFront.castShadow = true; tvFront.receiveShadow = true;
         tvGroup.add(tvFront);
 
         const tvMidGeo = new THREE.BoxGeometry(3.2, 2.0, 1.2);
         const tvMid = new THREE.Mesh(tvMidGeo, tvMat);
-        tvMid.position.set(0, 2.0, -0.9);
-        tvMid.castShadow = true;
-        tvMid.receiveShadow = true;
+        tvMid.position.set(0, 2.0, -0.9); tvMid.castShadow = true; tvMid.receiveShadow = true;
         tvGroup.add(tvMid);
 
         const tvBackGeo = new THREE.BoxGeometry(2.0, 1.4, 1.2);
         const tvBack = new THREE.Mesh(tvBackGeo, tvMat);
-        tvBack.position.set(0, 2.0, -2.1);
-        tvBack.castShadow = true;
-        tvBack.receiveShadow = true;
+        tvBack.position.set(0, 2.0, -2.1); tvBack.castShadow = true; tvBack.receiveShadow = true;
         tvGroup.add(tvBack);
 
         const frameGeo = new THREE.BoxGeometry(3.2, 2.0, 0.85);
@@ -384,70 +311,46 @@
         screen.position.set(0, 2.0, 0.43); 
         tvGroup.add(screen);
 
-        // --- PAINEL DE CONTROLE REATIVO ---
-        const faceCanvas = document.createElement('canvas');
-        faceCanvas.width = 256;
-        faceCanvas.height = 64;
-        const faceCtx = faceCanvas.getContext('2d');
-        const faceTex = new THREE.CanvasTexture(faceCanvas);
-        
-        function updateFace(text, color) {
-            faceCtx.fillStyle = '#0a0a0a'; 
-            faceCtx.fillRect(0, 0, 256, 64);
-            faceCtx.font = 'bold 45px "Courier New", monospace';
-            faceCtx.fillStyle = color;
-            faceCtx.textAlign = 'center';
-            faceCtx.textBaseline = 'middle';
-            faceCtx.shadowColor = color;
-            faceCtx.shadowBlur = 12;
-            faceCtx.fillText(text, 128, 36);
-            faceCtx.shadowBlur = 0;
-            faceTex.needsUpdate = true;
-        }
-        
-        updateFace('^ _ ^', '#00ffcc');
+        // --- DISPLAY REATIVO (SENSORY MODULE) ---
+        const robotDiv = document.createElement('div');
+        robotDiv.className = 'robot-screen';
+        robotDiv.innerHTML = `
+            <span class="robot-face-line" id="robot-face">^ _ ^</span>
+            <span class="robot-status-line" id="robot-status">SYSTEM ACTIVE</span>
+            <span class="robot-label">SENSORY MODULE</span>
+        `;
+        const robotObj = new CSS3DObject(robotDiv);
+        robotObj.scale.set(0.005, 0.005, 0.005);
+        robotObj.position.set(-0.8, 0.4, 0.96); 
+        tvGroup.add(robotObj);
 
-        const faceMat = new THREE.MeshBasicMaterial({ map: faceTex });
-        const faceMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.3), faceMat);
-        faceMesh.position.set(-0.8, 0.4, 0.96); 
-        tvGroup.add(faceMesh);
+        const faceEl = robotDiv.querySelector('#robot-face');
+        const statusEl = robotDiv.querySelector('#robot-status');
 
+        // Controles Visuais
         const controlsGroup = new THREE.Group();
-        const knobGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.1, 16);
-        knobGeo.rotateX(Math.PI / 2);
+        const knobGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.1, 16); knobGeo.rotateX(Math.PI / 2);
         const btnGeo = new THREE.BoxGeometry(0.15, 0.08, 0.1);
-
         const reactiveMats = [];
         const reactiveMeshes = [];
-
         for(let i = 0; i < 3; i++) {
             const mat = new THREE.MeshStandardMaterial({ 
-                color: 0x111111, 
-                emissive: i === 0 ? 0xff0055 : (i === 1 ? 0x00aaff : 0xffaa00),
-                emissiveIntensity: 0.0,
-                roughness: 0.6
+                color: 0x111111, emissive: i === 0 ? 0xff0055 : (i === 1 ? 0x00aaff : 0xffaa00),
+                emissiveIntensity: 0.0, roughness: 0.6
             });
             const mesh = new THREE.Mesh(i < 2 ? btnGeo : knobGeo, mat);
             mesh.position.set(0.5 + i * 0.3, 0.4, 0.96); 
             controlsGroup.add(mesh);
-            reactiveMats.push(mat);
-            reactiveMeshes.push(mesh);
+            reactiveMats.push(mat); reactiveMeshes.push(mesh);
         }
         tvGroup.add(controlsGroup);
 
         const divInfo = document.createElement('div');
-        divInfo.style.width = '480px'; 
-        divInfo.style.height = '288px'; 
-        divInfo.style.backgroundColor = '#000';
-
+        divInfo.style.width = '480px'; divInfo.style.height = '288px'; divInfo.style.backgroundColor = '#000';
         const iframe = document.createElement('iframe');
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.style.border = '0';
-        iframe.style.pointerEvents = 'auto'; 
-        iframe.src = 'https://www.youtube.com/embed/yVWU6NyW0mU?list=RDyVWU6NyW0mU&autoplay=1&rel=0';
-        iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
-        iframe.allowFullscreen = true;
+        iframe.style.width = '100%'; iframe.style.height = '100%'; iframe.style.border = '0'; iframe.style.pointerEvents = 'auto'; 
+        iframe.src = 'https://www.youtube.com/embed/BoZX0cqZUh4?autoplay=1&rel=0';
+        iframe.allow = 'autoplay; encrypted-media; picture-in-picture'; iframe.allowFullscreen = true;
         divInfo.appendChild(iframe);
 
         const cssObject = new CSS3DObject(divInfo);
@@ -459,7 +362,6 @@
         tvLight.position.set(0, 2.0, 1.0);
         tvLight.castShadow = true;
         tvGroup.add(tvLight);
-
         scene.add(tvGroup);
 
         const clock = new THREE.Clock();
@@ -468,9 +370,7 @@
             requestAnimationFrame(animate);
             const time = clock.getElapsedTime();
 
-            if (rugMat.userData.shader) {
-                rugMat.userData.shader.uniforms.time.value = time;
-            }
+            if (rugMat.userData.shader) rugMat.userData.shader.uniforms.time.value = time;
 
             const beat1 = Math.pow(Math.sin(time * 5.0), 4);
             const beat2 = Math.pow(Math.cos(time * 2.5), 2);
@@ -482,21 +382,32 @@
                 mesh.position.z = 0.96 + intensity * 0.03; 
             });
 
-            if (Math.floor(time * 12) % 3 === 0) { 
-                let faceStr = "- _ -";
-                let faceColor = "#00ffcc"; 
-                if (randomSpike > 0.5) { faceStr = "O _ O"; faceColor = "#ff0055"; }
-                else if (beat1 > 0.8) { faceStr = "> _ <"; faceColor = "#ffaa00"; }
-                else if (beat2 > 0.7) { faceStr = "^ _ ^"; faceColor = "#00aaff"; }
-                updateFace(faceStr, faceColor);
+            if (faceEl && statusEl && Math.floor(time * 12) % 3 === 0) { 
+                if (randomSpike > 0.5) { 
+                    faceEl.innerText = "O _ O"; 
+                    statusEl.innerText = "PEAK DETECTED";
+                    faceEl.style.color = "#ff0055";
+                    faceEl.style.textShadow = "0 0 9px #ff0055";
+                } else if (beat1 > 0.8) { 
+                    faceEl.innerText = "> _ <"; 
+                    statusEl.innerText = "SAMPLING...";
+                    faceEl.style.color = "#00e060";
+                    faceEl.style.textShadow = "0 0 9px #00e060";
+                } else if (beat2 > 0.7) { 
+                    faceEl.innerText = "^ _ ^"; 
+                    statusEl.innerText = "AUDIO SYNC";
+                } else {
+                    faceEl.innerText = "- _ -";
+                    statusEl.innerText = "SYSTEM ACTIVE";
+                    faceEl.style.color = "#00e060";
+                    faceEl.style.textShadow = "0 0 9px #00e060";
+                }
             }
 
             const pulse = Math.sin(time * 3);
             beamLight.intensity = 30.0 + pulse * 10.0;
             beamMat.uniforms.beamOpacity.value = 0.08 + pulse * 0.03;
-
-            const flickerVal = Math.random() * 0.15;
-            tvLight.intensity = 1.5 + flickerVal * 3;
+            tvLight.intensity = 1.5 + Math.random() * 0.4;
 
             controls.update();
             renderer.render(scene, camera);
