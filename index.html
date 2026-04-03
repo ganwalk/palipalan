@@ -30,14 +30,19 @@
 
         .wave-text {
             display: flex;
+            justify-content: center;
+            flex-wrap: nowrap;
             gap: 2px;
             font-family: 'Nabla', system-ui;
-            font-size: 5rem;
+            /* Tamanho responsivo: mínimo 2.5rem, ideal 12% da largura da tela, máximo 6rem */
+            font-size: clamp(2.5rem, 12vw, 6rem);
             font-weight: 900;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.02em;
             text-transform: lowercase;
             pointer-events: none;
             user-select: none;
+            width: 100%;
+            padding: 0 10px;
         }
 
         .wave-text span {
@@ -143,16 +148,15 @@
 
     <div class="crt-overlay"></div>
 
-    <!-- Fundo de Horizonte Ambientado (Iframe Desfocado e Espelhado) -->
     <div id="ambient-bg" class="absolute inset-0 overflow-hidden bg-[#141414] flex justify-center items-center pointer-events-none" style="z-index: 0;">
         <iframe class="w-[150vw] h-[150vh] scale-x-[-1] opacity-40" style="filter: blur(80px); pointer-events: none;" 
-        src="https://www.youtube.com/embed/BoZX0cqZUh4?autoplay=1&mute=1&controls=0&disablekb=1" 
+        src="https://www.youtube.com/embed/videoseries?list=PL7nYDn3_K58TRUbhQzgFLDNlfhmQdJFUr&autoplay=1&mute=1&controls=0&disablekb=1&loop=1" 
         allow="autoplay" frameborder="0"></iframe>
     </div>
 
     <div id="canvas-container" class="absolute inset-0" style="z-index: 10;"></div>
 
-    <div class="absolute inset-0 pointer-events-none flex justify-center items-start pt-20" style="z-index: 20;">
+    <div class="absolute inset-x-0 top-0 pointer-events-none flex justify-center pt-8 md:pt-16 lg:pt-20" style="z-index: 20;">
         <div class="wave-text">
             <span>p</span><span>a</span><span>l</span><span>i</span><span>p</span><span>a</span><span>l</span><span>a</span><span>n</span>
         </div>
@@ -242,7 +246,52 @@
         scene.add(beamMesh);
 
         const floorGeo = new THREE.PlaneGeometry(50, 50);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+        const floorMat = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0 }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float time;
+                varying vec2 vUv;
+
+                // Função de ruído simples para gerar estrelas
+                float random(vec2 st) {
+                    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+                }
+
+                void main() {
+                    vec3 color = vec3(0.07, 0.07, 0.07); // Cor base do chão escuro
+
+                    // Geração de estrelas
+                    vec2 st = vUv * 50.0; // Escala do padrão de estrelas
+                    float brightness = random(floor(st)); // Brilho base aleatório por célula
+                    
+                    // Centelha: pisca com o tempo
+                    float twinkle = sin(time * random(floor(st)) * 5.0) * 0.5 + 0.5;
+                    brightness *= twinkle;
+
+                    // Máscara para pequenos pontos (estrelas)
+                    vec2 pos = fract(st) - 0.5;
+                    float star = 1.0 - smoothstep(0.0, 0.1, length(pos));
+                    
+                    // Gera uma cor aleatória e vibrante para cada estrela baseada na sua posição
+                    vec3 starColor = 0.5 + 0.5 * cos(random(floor(st)) * 6.2831 + vec3(0.0, 2.0, 4.0));
+                    
+                    // Adiciona as estrelas coloridas ao chão (multiplicado para realçar o brilho)
+                    color += starColor * (brightness * star * 2.0);
+
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `,
+            side: THREE.DoubleSide
+        });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
@@ -262,14 +311,19 @@
                 warp.x += sin(warp.y * 0.8 + t); warp.y += cos(warp.x * 0.8 - t * 0.5);
                 float pattern = sin(warp.x) * cos(warp.y); pattern += sin(warp.x * 2.0 - t) * cos(warp.y * 2.0) * 0.5;
                 float r = length(center); float angle = atan(center.y, center.x); float medallion = r + sin(angle * 12.0 + time * 1.5) * 0.03; 
-                vec3 carmine = vec3(0.85, 0.10, 0.15); vec3 gold = vec3(0.95, 0.75, 0.10); vec3 navy = vec3(0.10, 0.25, 0.50); vec3 cream = vec3(1.00, 0.95, 0.85);   
+                // Cores Vibrantes e Saturadas
+                vec3 carmine = vec3(1.0, 0.0, 0.2); // Vermelho Néon Vibrante
+                vec3 gold = vec3(1.0, 0.8, 0.0);    // Dourado Brilhante
+                vec3 navy = vec3(0.0, 0.2, 1.0);    // Azul Elétrico
+                vec3 cream = vec3(1.0, 1.0, 0.9);   // Creme Luminoso
                 vec3 rugColor = mix(carmine, navy, smoothstep(-0.4, 0.4, pattern)); rugColor = mix(rugColor, cream, smoothstep(0.7, 1.0, pattern));
                 if (medallion < 0.25) { rugColor = mix(gold, carmine, smoothstep(0.0, 0.2, pattern + r)); } else if (medallion < 0.28) { rugColor = gold; }
                 float borderX = min(uv.x, 1.0 - uv.x); float borderY = min(uv.y, 1.0 - uv.y); float minDist = min(borderX, borderY);
                 if (minDist < 0.02) rugColor = cream; else if (minDist < 0.06) rugColor = navy; else if (minDist < 0.07) rugColor = gold;
                 else if (minDist < 0.15) rugColor = mix(carmine, gold, smoothstep(-0.5, 0.5, sin(uv.x * 40.0 + time) * cos(uv.y * 40.0 - time)));
                 else if (minDist < 0.16) rugColor = gold;
-                diffuseColor.rgb = mix(diffuseColor.rgb, rugColor, 0.95);
+                // Aumenta a luminosidade geral da cor do tapete
+                diffuseColor.rgb = mix(diffuseColor.rgb, rugColor * 1.2, 0.95);
             `);
         };
         const rug = new THREE.Mesh(rugGeo, rugMat);
@@ -349,7 +403,7 @@
         divInfo.style.width = '480px'; divInfo.style.height = '288px'; divInfo.style.backgroundColor = '#000';
         const iframe = document.createElement('iframe');
         iframe.style.width = '100%'; iframe.style.height = '100%'; iframe.style.border = '0'; iframe.style.pointerEvents = 'auto'; 
-        iframe.src = 'https://www.youtube.com/embed/BoZX0cqZUh4?autoplay=1&rel=0';
+        iframe.src = 'https://www.youtube.com/embed/videoseries?list=PL7nYDn3_K58TRUbhQzgFLDNlfhmQdJFUr&autoplay=1&rel=0';
         iframe.allow = 'autoplay; encrypted-media; picture-in-picture'; iframe.allowFullscreen = true;
         divInfo.appendChild(iframe);
 
@@ -371,6 +425,7 @@
             const time = clock.getElapsedTime();
 
             if (rugMat.userData.shader) rugMat.userData.shader.uniforms.time.value = time;
+            if (floorMat.uniforms) floorMat.uniforms.time.value = time;
 
             const beat1 = Math.pow(Math.sin(time * 5.0), 4);
             const beat2 = Math.pow(Math.cos(time * 2.5), 2);
