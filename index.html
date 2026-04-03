@@ -83,7 +83,8 @@
             background: #000d04;
             border: 2px solid #0d2010;
             border-radius: 10px;
-            padding: 14px 28px 10px;
+            padding: 30px 28px 10px; 
+            box-sizing: border-box; 
             box-shadow:
                 inset 0 0 40px rgba(0,50,0,0.8),
                 inset 0 2px 8px rgba(0,0,0,0.9),
@@ -167,12 +168,11 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 
-        // --- INTEGRAÇÃO YOUTUBE API PARA SINCRONIZAÇÃO ---
+        // --- INTEGRAÇÃO YOUTUBE API PARA SINCRONIZAÇÃO PERFEITA ---
         let playerTv, playerBg;
         let isYtReady = false;
 
         window.onYouTubeIframeAPIReady = function() {
-            isYtReady = true;
             const playlistId = 'PL7nYDn3_K58TRUbhQzgFLDNlfhmQdJFUr';
             
             // Fundo (Mudo e Desfocado)
@@ -180,11 +180,37 @@
                 playerVars: { 
                     autoplay: 1, mute: 1, controls: 0, disablekb: 1, 
                     loop: 1, listType: 'playlist', list: playlistId 
+                },
+                events: {
+                    'onReady': () => {
+                        isYtReady = true;
+                        playerBg.mute(); // Força o mute garantido
+                    }
                 }
             });
 
             // TV Principal conectando ao iframe gerado dinamicamente
-            playerTv = new YT.Player('player-tv-iframe');
+            playerTv = new YT.Player('player-tv-iframe', {
+                events: {
+                    'onStateChange': (event) => {
+                        if (!isYtReady || !playerBg || !playerBg.playVideo) return;
+                        
+                        const state = event.data;
+                        if (state === 1) { // 1 = PLAYING
+                            const tvIndex = playerTv.getPlaylistIndex();
+                            // Atualiza a playlist perfeitamente se a TV saltar de música
+                            if (tvIndex !== playerBg.getPlaylistIndex()) {
+                                playerBg.playVideoAt(tvIndex);
+                            } else {
+                                playerBg.playVideo();
+                            }
+                        } else if (state === 2 || state === 3) { // 2 = PAUSED, 3 = BUFFERING
+                            // Fundo reflete perfeitamente quando a TV para
+                            playerBg.pauseVideo();
+                        }
+                    }
+                }
+            });
         };
 
         // Injeta o script da API do YouTube
@@ -276,14 +302,14 @@
 
         // --- CHÃO DE VIDRO E CÉU ESTRELADO 3D (PARALLAX) ---
         
-        // 1. O Piso (Água escura com ondas fluidas e reflexos)
+        // 1. O Piso (Água mais clara e vibrante com ondas fluidas e reflexos)
         const floorGeo = new THREE.PlaneGeometry(100, 100);
         const floorMat = new THREE.MeshStandardMaterial({
-            color: 0x010a15,
-            roughness: 0.05, // Superfície lisa para reflexos molhados
-            metalness: 0.9,  // Alta refletividade da água
+            color: 0x031a33, // Cor base mais clara (azul oceânico em vez de quase preto)
+            roughness: 0.05, 
+            metalness: 0.9,  
             transparent: true,
-            opacity: 0.85    // Permite ver as estrelas coloridas afundadas
+            opacity: 0.85    
         });
 
         floorMat.onBeforeCompile = (shader) => {
@@ -310,14 +336,14 @@
                 
                 float wave = sin(p.x) * cos(p.y);
                 
-                // Cores do oceano profundo às cristas ciano
-                vec3 deepWater = vec3(0.0, 0.05, 0.15);
-                vec3 crestWater = vec3(0.0, 0.4, 0.6);
+                // Cores do oceano mais claras e vibrantes
+                vec3 deepWater = vec3(0.0, 0.15, 0.35); // Azul profundo iluminado
+                vec3 crestWater = vec3(0.0, 0.65, 0.9); // Ciano brilhante nas cristas
                 
                 vec3 waterMix = mix(deepWater, crestWater, smoothstep(-0.5, 1.0, wave));
                 
-                // Espuma / Cáusticas nas cristas das ondas
-                float caustics = smoothstep(0.8, 1.0, wave) * 0.3;
+                // Espuma / Cáusticas nas cristas das ondas (ligeiramente mais fortes)
+                float caustics = smoothstep(0.8, 1.0, wave) * 0.45;
                 waterMix += vec3(caustics);
 
                 // Aplica a cor da água mantendo as sombras originais ativas
@@ -395,9 +421,10 @@
         rug.position.y = 0.025; rug.position.z = -0.8; rug.receiveShadow = true;
         scene.add(rug);
 
+        // --- CONSTRUÇÃO DO CONJUNTO (MÓVEL E TV) ---
         const tvGroup = new THREE.Group();
 
-        // 1. MÓVEL (RACK) - Detalhes Skeuomorfistas
+        // 1. MÓVEL (RACK) - Mantém o tamanho original
         const rackGeo = new THREE.BoxGeometry(4.5, 0.8, 3.5);
         const rackMat = new THREE.MeshStandardMaterial({ 
             color: 0x4a2e1b, 
@@ -418,83 +445,92 @@
             tvGroup.add(foot);
         });
 
-        // 2. TELEVISÃO CRT
+        // 2. TELEVISÃO CRT (GRUPO INDEPENDENTE PARA ESCALAR)
+        const tvHardwareGroup = new THREE.Group();
+        // Aumenta a TV em 25% (escala 1.25) em todos os eixos
+        tvHardwareGroup.scale.set(1.25, 1.25, 1.25);
+        // Ajusta o eixo Y para compensar a escala e continuar perfeitamente encostada na base
+        tvHardwareGroup.position.y = -0.20;
+
         const tvMat = new THREE.MeshStandardMaterial({ color: 0x1f1a18, roughness: 0.6 });
-        const tvFrontGeo = new THREE.BoxGeometry(3.0, 2.4, 0.6);
+        // Corpo frontal alargado (de 3.0 para 3.4) para acomodar o ecrã grande E os painéis laterais
+        const tvFrontGeo = new THREE.BoxGeometry(3.4, 2.4, 0.6);
         const tvFront = new THREE.Mesh(tvFrontGeo, tvMat);
         tvFront.position.set(0, 2.0, 0); tvFront.castShadow = true; tvFront.receiveShadow = true;
-        tvGroup.add(tvFront);
+        tvHardwareGroup.add(tvFront);
 
-        // Grelha de alto-falante na TV (Esquerda)
+        // Grelha de alto-falante na TV (Esquerda) - Reposicionada
         const speakerGrillGeo = new THREE.BoxGeometry(0.3, 1.6, 0.62);
         const speakerGrillMat = new THREE.MeshStandardMaterial({color: 0x0a0a0a, roughness: 0.9});
         const tvSpeaker = new THREE.Mesh(speakerGrillGeo, speakerGrillMat);
-        tvSpeaker.position.set(-1.25, 2.0, 0.0);
-        tvGroup.add(tvSpeaker);
+        tvSpeaker.position.set(-1.45, 2.0, 0.0);
+        tvHardwareGroup.add(tvSpeaker);
 
-        // Botões Giratórios (Direita)
+        // Botões Giratórios (Direita) - Reposicionados
         const tvKnobGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.05, 16);
         tvKnobGeo.rotateX(Math.PI / 2);
         const tvKnobMat = new THREE.MeshStandardMaterial({color: 0xaaaaaa, metalness: 0.6, roughness: 0.4});
         const tvKnob1 = new THREE.Mesh(tvKnobGeo, tvKnobMat);
-        tvKnob1.position.set(1.25, 2.5, 0.31);
-        tvGroup.add(tvKnob1);
+        tvKnob1.position.set(1.45, 2.5, 0.31);
+        tvHardwareGroup.add(tvKnob1);
         const tvKnob2 = new THREE.Mesh(tvKnobGeo, tvKnobMat);
-        tvKnob2.position.set(1.25, 2.2, 0.31);
-        tvGroup.add(tvKnob2);
+        tvKnob2.position.set(1.45, 2.2, 0.31);
+        tvHardwareGroup.add(tvKnob2);
         
-        // Botão de Power Vermelho
+        // Botão de Power Vermelho - Reposicionado
         const tvPowerBtn = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 0.05), new THREE.MeshStandardMaterial({color: 0xcc0000}));
-        tvPowerBtn.position.set(1.25, 1.5, 0.31);
-        tvGroup.add(tvPowerBtn);
+        tvPowerBtn.position.set(1.45, 1.5, 0.31);
+        tvHardwareGroup.add(tvPowerBtn);
 
         // Antena no topo da TV (Estilo "Orelhas de Coelho")
         const antBaseGeo = new THREE.CylinderGeometry(0.15, 0.2, 0.05, 16);
         const antMat = new THREE.MeshStandardMaterial({color: 0x888888, metalness: 0.9, roughness: 0.2});
         const antBase = new THREE.Mesh(antBaseGeo, antMat);
         antBase.position.set(0, 3.225, 0);
-        tvGroup.add(antBase);
+        tvHardwareGroup.add(antBase);
         const antPoleGeo = new THREE.CylinderGeometry(0.015, 0.015, 1.5, 8);
         const ant1 = new THREE.Mesh(antPoleGeo, antMat);
         ant1.position.set(-0.35, 3.8, 0);
         ant1.rotation.z = Math.PI / 6;
-        tvGroup.add(ant1);
+        tvHardwareGroup.add(ant1);
         const ant2 = new THREE.Mesh(antPoleGeo, antMat);
         ant2.position.set(0.35, 3.8, 0);
         ant2.rotation.z = -Math.PI / 6;
-        tvGroup.add(ant2);
+        tvHardwareGroup.add(ant2);
 
-        const tvMidGeo = new THREE.BoxGeometry(2.6, 2.0, 1.2);
+        // Corpo Central da caixa CRT alargado 
+        const tvMidGeo = new THREE.BoxGeometry(3.0, 2.0, 1.2);
         const tvMid = new THREE.Mesh(tvMidGeo, tvMat);
         tvMid.position.set(0, 2.0, -0.9); tvMid.castShadow = true; tvMid.receiveShadow = true;
-        tvGroup.add(tvMid);
+        tvHardwareGroup.add(tvMid);
 
-        const tvBackGeo = new THREE.BoxGeometry(1.6, 1.4, 1.2);
+        // Traseira do tubo alargada
+        const tvBackGeo = new THREE.BoxGeometry(2.0, 1.4, 1.2);
         const tvBack = new THREE.Mesh(tvBackGeo, tvMat);
         tvBack.position.set(0, 2.0, -2.1); tvBack.castShadow = true; tvBack.receiveShadow = true;
-        tvGroup.add(tvBack);
+        tvHardwareGroup.add(tvBack);
 
         // Moldura do Ecrã
-        const frameGeo = new THREE.BoxGeometry(2.0, 1.6, 0.65);
+        const frameGeo = new THREE.BoxGeometry(2.6, 2.0, 0.85);
         const frameMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.5 });
         const frame = new THREE.Mesh(frameGeo, frameMat);
         frame.position.set(0, 2.0, 0);
-        tvGroup.add(frame);
+        tvHardwareGroup.add(frame);
 
         // Fundo da Tela
-        const screenGeo = new THREE.PlaneGeometry(1.8, 1.4);
+        const screenGeo = new THREE.PlaneGeometry(2.4, 1.8);
         const screenMat = new THREE.MeshStandardMaterial({ color: 0x020202, roughness: 0.2 });
         const screen = new THREE.Mesh(screenGeo, screenMat);
         screen.position.set(0, 2.0, 0.33); 
-        tvGroup.add(screen);
+        tvHardwareGroup.add(screen);
 
-        // Vidro CRT convexo refletivo sobre a tela
-        const glassGeo = new THREE.PlaneGeometry(1.85, 1.45, 16, 16);
+        // Vidro CRT convexo refletivo sobre a tela (Corrigido para cobrir o ecrã todo)
+        const glassGeo = new THREE.PlaneGeometry(2.45, 1.85, 16, 16);
         const glassPos = glassGeo.attributes.position;
         for(let i=0; i<glassPos.count; i++) {
             const x = glassPos.getX(i);
             const y = glassPos.getY(i);
-            const bulge = Math.cos((x/1.85)*Math.PI) * Math.cos((y/1.45)*Math.PI) * 0.08;
+            const bulge = Math.cos((x/2.45)*Math.PI) * Math.cos((y/1.85)*Math.PI) * 0.08;
             glassPos.setZ(i, bulge);
         }
         glassGeo.computeVertexNormals();
@@ -503,9 +539,40 @@
         });
         const glassMesh = new THREE.Mesh(glassGeo, glassMat);
         glassMesh.position.set(0, 2.0, 0.35); 
-        tvGroup.add(glassMesh);
+        tvHardwareGroup.add(glassMesh);
 
-        // --- DISPLAY REATIVO (SENSORY MODULE) ---
+        // --- TV PLAYER DIV ---
+        const divInfo = document.createElement('div');
+        divInfo.style.width = '1024px'; divInfo.style.height = '768px'; divInfo.style.backgroundColor = '#000';
+        divInfo.style.pointerEvents = 'auto';
+        
+        const iframeTv = document.createElement('iframe');
+        iframeTv.id = 'player-tv-iframe';
+        iframeTv.style.width = '100%'; 
+        iframeTv.style.height = '100%'; 
+        iframeTv.style.border = '0'; 
+        iframeTv.style.pointerEvents = 'auto'; 
+        iframeTv.src = 'https://www.youtube.com/embed/videoseries?list=PL7nYDn3_K58TRUbhQzgFLDNlfhmQdJFUr&enablejsapi=1&autoplay=1&mute=0';
+        iframeTv.allow = 'autoplay; encrypted-media; picture-in-picture'; 
+        iframeTv.allowFullscreen = true;
+        divInfo.appendChild(iframeTv);
+
+        const cssObject = new CSS3DObject(divInfo);
+        // Escala corrigida para caber nos 2.4 de largura (1024 * 0.00234375 = 2.4)
+        cssObject.scale.set(0.00234375, 0.00234375, 0.00234375);
+        cssObject.position.set(0, 2.0, 0.34); 
+        tvHardwareGroup.add(cssObject);
+
+        const tvLight = new THREE.PointLight(0xeeeeff, 1.5, 15);
+        tvLight.position.set(0, 2.0, 1.0);
+        tvLight.castShadow = true;
+        tvHardwareGroup.add(tvLight);
+
+        // Adiciona a TV completa e escalada ao grupo principal
+        tvGroup.add(tvHardwareGroup);
+
+
+        // --- DISPLAY REATIVO (SENSORY MODULE) NO RACK ---
         // Moldura metálica skeuomorfista para o display do robô
         const trimGeo = new THREE.BoxGeometry(1.35, 0.45, 0.05);
         const trimMat = new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.8, roughness: 0.4});
@@ -517,8 +584,8 @@
         robotDiv.className = 'robot-screen';
         robotDiv.innerHTML = `
             <span class="robot-face-line" id="robot-face">^ _ ^</span>
-            <span class="robot-status-line" id="robot-status">SYSTEM ACTIVE</span>
-            <span class="robot-label">SENSORY MODULE</span>
+            <span class="robot-status-line" id="robot-status">AGUARDANDO BATIDA</span>
+            <span class="robot-label">ANALISADOR DE FREQUÊNCIA</span>
         `;
         const robotObj = new CSS3DObject(robotDiv);
         robotObj.scale.set(0.005, 0.005, 0.005);
@@ -551,31 +618,6 @@
         }
         tvGroup.add(controlsGroup);
 
-        // --- TV PLAYER DIV ---
-        const divInfo = document.createElement('div');
-        divInfo.style.width = '1024px'; divInfo.style.height = '768px'; divInfo.style.backgroundColor = '#000';
-        divInfo.style.pointerEvents = 'auto';
-        
-        const iframeTv = document.createElement('iframe');
-        iframeTv.id = 'player-tv-iframe';
-        iframeTv.style.width = '100%'; 
-        iframeTv.style.height = '100%'; 
-        iframeTv.style.border = '0'; 
-        iframeTv.style.pointerEvents = 'auto'; 
-        iframeTv.src = 'https://www.youtube.com/embed/videoseries?list=PL7nYDn3_K58TRUbhQzgFLDNlfhmQdJFUr&enablejsapi=1&autoplay=1&mute=0';
-        iframeTv.allow = 'autoplay; encrypted-media; picture-in-picture'; 
-        iframeTv.allowFullscreen = true;
-        divInfo.appendChild(iframeTv);
-
-        const cssObject = new CSS3DObject(divInfo);
-        cssObject.scale.set(0.0017578, 0.0017578, 0.0017578);
-        cssObject.position.set(0, 2.0, 0.34); 
-        tvGroup.add(cssObject);
-
-        const tvLight = new THREE.PointLight(0xeeeeff, 1.5, 15);
-        tvLight.position.set(0, 2.0, 1.0);
-        tvLight.castShadow = true;
-        tvGroup.add(tvLight);
         scene.add(tvGroup);
 
 
@@ -592,29 +634,22 @@
             // Rotação suave do céu estrelado
             starField.rotation.y = time * 0.02;
 
-            // Lógica de Sincronização Contínua dos Vídeos
-            if (isYtReady && playerTv && playerTv.getPlayerState && playerBg && playerBg.getPlayerState) {
-                const tvState = playerTv.getPlayerState();
-                
-                if (tvState === 1) { // 1 = PLAYING
-                    const tvIndex = playerTv.getPlaylistIndex();
-                    const bgIndex = playerBg.getPlaylistIndex();
+            // Lógica de Sincronização Contínua dos Vídeos (Micro-ajustes de velocidade)
+            if (isYtReady && playerTv && playerBg && playerTv.getPlayerState && playerBg.getPlayerState) {
+                if (playerTv.getPlayerState() === 1 && playerBg.getPlayerState() === 1) {
                     const tvTime = playerTv.getCurrentTime();
+                    const bgTime = playerBg.getCurrentTime();
+                    const diff = tvTime - bgTime;
                     
-                    // Se o usuário pular o vídeo na TV, força o fundo a pular
-                    if (tvIndex !== bgIndex && tvIndex !== -1) {
-                        playerBg.playVideoAt(tvIndex);
-                    } else if (playerBg.getPlayerState() !== 1) {
-                        playerBg.playVideo(); // Garante que o fundo continua a tocar
+                    // Ajuste de velocidade em tempo real para sincronização simultânea sem travamentos!
+                    if (Math.abs(diff) > 1.5) {
+                        playerBg.seekTo(tvTime, true);
+                    } else if (diff > 0.15) {
+                        playerBg.setPlaybackRate(1.25); // Fundo acelera para alcançar
+                    } else if (diff < -0.15) {
+                        playerBg.setPlaybackRate(0.75); // Fundo abranda para esperar
                     } else {
-                        // Se o gap de tempo entre eles for maior que 0.5s, força a sincronização exata
-                        if (Math.abs(tvTime - playerBg.getCurrentTime()) > 0.5) {
-                            playerBg.seekTo(tvTime, true);
-                        }
-                    }
-                } else if (tvState === 2 || tvState === 3) { // 2 = PAUSED, 3 = BUFFERING
-                    if (playerBg.getPlayerState() === 1) {
-                        playerBg.pauseVideo();
+                        playerBg.setPlaybackRate(1.0);  // Sincronizado perfeitamente
                     }
                 }
             }
@@ -633,20 +668,20 @@
             if (faceEl && statusEl && Math.floor(time * 12) % 3 === 0) { 
                 if (randomSpike > 0.5) { 
                     faceEl.innerText = "O _ O"; 
-                    statusEl.innerText = "PEAK DETECTED";
+                    statusEl.innerText = "PICO DE GRAVE!";
                     faceEl.style.color = "#ff0055";
                     faceEl.style.textShadow = "0 0 9px #ff0055";
                 } else if (beat1 > 0.8) { 
                     faceEl.innerText = "> _ <"; 
-                    statusEl.innerText = "SAMPLING...";
+                    statusEl.innerText = "LENDO BATIDA...";
                     faceEl.style.color = "#00e060";
                     faceEl.style.textShadow = "0 0 9px #00e060";
                 } else if (beat2 > 0.7) { 
                     faceEl.innerText = "^ _ ^"; 
-                    statusEl.innerText = "AUDIO SYNC";
+                    statusEl.innerText = "SINCRONIZADO";
                 } else {
                     faceEl.innerText = "- _ -";
-                    statusEl.innerText = "SYSTEM ACTIVE";
+                    statusEl.innerText = "AGUARDANDO BATIDA";
                     faceEl.style.color = "#00e060";
                     faceEl.style.textShadow = "0 0 9px #00e060";
                 }
