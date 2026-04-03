@@ -338,28 +338,30 @@
         tvGroup.add(rack);
 
         const tvMat = new THREE.MeshStandardMaterial({ color: 0x2a160b, roughness: 0.7 });
-        const tvFrontGeo = new THREE.BoxGeometry(3.6, 2.4, 0.6);
+        
+        // Ajustado de 16:9 para 4:3 (mais estreito e quadrado)
+        const tvFrontGeo = new THREE.BoxGeometry(3.0, 2.4, 0.6);
         const tvFront = new THREE.Mesh(tvFrontGeo, tvMat);
         tvFront.position.set(0, 2.0, 0); tvFront.castShadow = true; tvFront.receiveShadow = true;
         tvGroup.add(tvFront);
 
-        const tvMidGeo = new THREE.BoxGeometry(3.2, 2.0, 1.2);
+        const tvMidGeo = new THREE.BoxGeometry(2.6, 2.0, 1.2);
         const tvMid = new THREE.Mesh(tvMidGeo, tvMat);
         tvMid.position.set(0, 2.0, -0.9); tvMid.castShadow = true; tvMid.receiveShadow = true;
         tvGroup.add(tvMid);
 
-        const tvBackGeo = new THREE.BoxGeometry(2.0, 1.4, 1.2);
+        const tvBackGeo = new THREE.BoxGeometry(1.6, 1.4, 1.2);
         const tvBack = new THREE.Mesh(tvBackGeo, tvMat);
         tvBack.position.set(0, 2.0, -2.1); tvBack.castShadow = true; tvBack.receiveShadow = true;
         tvGroup.add(tvBack);
 
-        const frameGeo = new THREE.BoxGeometry(3.2, 2.0, 0.85);
+        const frameGeo = new THREE.BoxGeometry(2.6, 2.0, 0.85);
         const frameMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
         const frame = new THREE.Mesh(frameGeo, frameMat);
         frame.position.set(0, 2.0, 0);
         tvGroup.add(frame);
 
-        const screenGeo = new THREE.PlaneGeometry(3.0, 1.8);
+        const screenGeo = new THREE.PlaneGeometry(2.4, 1.8);
         const screenMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.8 });
         const screen = new THREE.Mesh(screenGeo, screenMat);
         screen.position.set(0, 2.0, 0.43); 
@@ -400,7 +402,8 @@
         tvGroup.add(controlsGroup);
 
         const divInfo = document.createElement('div');
-        divInfo.style.width = '480px'; divInfo.style.height = '288px'; divInfo.style.backgroundColor = '#000';
+        // Resolução 4:3 nítida para o iframe
+        divInfo.style.width = '1024px'; divInfo.style.height = '768px'; divInfo.style.backgroundColor = '#000';
         const iframe = document.createElement('iframe');
         iframe.style.width = '100%'; iframe.style.height = '100%'; iframe.style.border = '0'; iframe.style.pointerEvents = 'auto'; 
         iframe.src = 'https://www.youtube.com/embed/videoseries?list=PL7nYDn3_K58TRUbhQzgFLDNlfhmQdJFUr&autoplay=1&rel=0';
@@ -408,7 +411,8 @@
         divInfo.appendChild(iframe);
 
         const cssObject = new CSS3DObject(divInfo);
-        cssObject.scale.set(0.00625, 0.00625, 0.00625);
+        // Novo multiplicador de escala para mapear de 1024px para 2.4 unidades WebGL
+        cssObject.scale.set(0.00234375, 0.00234375, 0.00234375);
         cssObject.position.set(0, 2.0, 0.44); 
         tvGroup.add(cssObject);
 
